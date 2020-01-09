@@ -41,10 +41,9 @@ public class SampleRover extends Creature {
 			width = (int) dimension.getWidth();
 			size = height * width;
 			fields = new GameField[size];
-			for(int i = 0; i < fields.length; i++) {
+			for (int i = 0; i < fields.length; i++) {
 				fields[i] = new GameField();
 			}
-//			System.out.println("created new game map \nheigth: " + height + "\nwidth: " + width + "\nsize: " + size);
 		}
 
 		public void updateObservations(Observation[] observations) {
@@ -54,24 +53,23 @@ public class SampleRover extends Creature {
 		}
 
 		private void updateObservation(Observation observation) {
-			Point point = observation.position;
-//			System.out.println("point.x: " + point.x);
-//			System.out.println("point.y: " + point.y);
-			int position = position(point.x, point.y);
-//			System.out.println("resolved position: " + position);
-			GameField field = fields[position];
+			GameField field = getField(observation.position);
 			field.setObservation(observation);
 		}
 
-		public int position(int xCoord, int yCoord) {
+		public GameField getField(Point position) {
+			return fields[position(position.x, position.y)];
+		}
+
+		private int position(int xCoord, int yCoord) {
 			return xCoord * width + yCoord;
 		}
 
-		public int xCoord(int position) {
+		private int xCoord(int position) {
 			return position / width;
 		}
 
-		public int yCoord(int position) {
+		private int yCoord(int position) {
 			return position % width;
 		}
 
@@ -82,13 +80,13 @@ public class SampleRover extends Creature {
 		private Observation observation;
 
 		public GameField() {
-			
+
 		}
-		
+
 		private void setObservation(Observation observation) {
 			this.observation = observation;
 		}
-		
+
 		private Observation getObservation() {
 			return observation;
 		}
