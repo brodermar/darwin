@@ -11,7 +11,7 @@ public class SampleRover extends Creature {
 	public static final String AUTHOR = "Mark Broderius";
 	public static final String DESCRIPTION = "A sample rover to explore the features of the simulation.";
 
-	private GameMap map;
+	private static GameMap map;
 
 	@Override
 	public void run() {
@@ -27,20 +27,20 @@ public class SampleRover extends Creature {
 	}
 
 	private void setUp() {
-		map = new GameMap(getMapDimensions());
+		if (map == null) {
+			map = new GameMap(getMapDimensions());
+		}
 	}
 
 	public static class GameMap {
 
 		private int height;
 		private int width;
-		private int size;
 		private GameField[][] fields;
 
 		public GameMap(Dimension dimension) {
 			height = (int) dimension.getHeight();
 			width = (int) dimension.getWidth();
-			size = height * width;
 			fields = new GameField[width][height];
 			for (int i = 0; i < width; i++) {
 				for (int j = 0; j < height; j++) {
@@ -73,18 +73,6 @@ public class SampleRover extends Creature {
 				builder.append('\n');
 			}
 			return builder.toString();
-		}
-
-		private int position(int xCoord, int yCoord) {
-			return xCoord * width + yCoord;
-		}
-
-		private int xCoord(int position) {
-			return position / width;
-		}
-
-		private int yCoord(int position) {
-			return position % width;
 		}
 
 	}
