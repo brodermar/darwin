@@ -18,6 +18,7 @@ public class SampleRover extends Creature {
 		setUp();
 		while (true) {
 			map.updateObservations(observe());
+			System.out.println(map.print());
 			if (!moveForward()) {
 				attack();
 				turnLeft();
@@ -34,15 +35,17 @@ public class SampleRover extends Creature {
 		private int height;
 		private int width;
 		private int size;
-		private GameField[] fields;
+		private GameField[][] fields;
 
 		public GameMap(Dimension dimension) {
 			height = (int) dimension.getHeight();
 			width = (int) dimension.getWidth();
 			size = height * width;
-			fields = new GameField[size];
-			for (int i = 0; i < fields.length; i++) {
-				fields[i] = new GameField();
+			fields = new GameField[width][height];
+			for (int i = 0; i < width; i++) {
+				for (int j = 0; j < height; j++) {
+					fields[i][j] = new GameField();
+				}
 			}
 		}
 
@@ -54,11 +57,22 @@ public class SampleRover extends Creature {
 
 		private void updateObservation(Observation observation) {
 			GameField field = getField(observation.position);
-			field.setObservation(observation);
+			field.updateObservation(observation);
 		}
 
 		public GameField getField(Point position) {
-			return fields[position(position.x, position.y)];
+			return fields[position.y - 1][position.x - 1];
+		}
+
+		public String print() {
+			StringBuilder builder = new StringBuilder();
+			for (int i = 0; i < width; i++) {
+				for (int j = 0; j < height; j++) {
+					builder.append(fields[i][j].print());
+				}
+				builder.append('\n');
+			}
+			return builder.toString();
 		}
 
 		private int position(int xCoord, int yCoord) {
@@ -83,12 +97,30 @@ public class SampleRover extends Creature {
 
 		}
 
-		private void setObservation(Observation observation) {
+		private void updateObservation(Observation observation) {
 			this.observation = observation;
 		}
 
 		private Observation getObservation() {
 			return observation;
+		}
+
+		public char print() {
+			if (observation == null) {
+				return ' ';
+			}
+			switch (observation.type) {
+			case CREATURE:
+				return 'c';
+			case EMPTY:
+				return ' ';
+			case HAZARD:
+				return 'h';
+			case WALL:
+				return 'X';
+			default:
+				throw new NullPointerException("cannot identify type");
+			}
 		}
 
 	}
