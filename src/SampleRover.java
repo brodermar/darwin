@@ -12,6 +12,7 @@ public class SampleRover extends Creature {
 	public static final String DESCRIPTION = "A sample rover to explore the features of the simulation.";
 
 	private static GameMap map;
+	private Point currentPosition;
 
 	@Override
 	public void run() {
@@ -19,9 +20,14 @@ public class SampleRover extends Creature {
 		while (true) {
 			map.updateObservations(observe());
 			System.out.println(map.print());
+			
 			if (!moveForward()) {
 				attack();
 				turnLeft();
+			} else {
+				
+				map.updateObservation(new Observation(currentPosition, ));
+				currentPosition = getPosition();
 			}
 		}
 	}
@@ -55,7 +61,7 @@ public class SampleRover extends Creature {
 			}
 		}
 
-		private void updateObservation(Observation observation) {
+		public void updateObservation(Observation observation) {
 			GameField field = getField(observation.position);
 			field.updateObservation(observation);
 		}
