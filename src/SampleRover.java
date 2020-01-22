@@ -22,14 +22,57 @@ public class SampleRover extends Creature {
 			System.out.println(map.print());
 			Observation[] observations = observe();
 			map.updateObservations(observations);
-			if (trace.isVisited(observations[1].position)) {
-				turnLeft();
+			GameField forwardField = front();
+			if(forwardField) {
+				
 			}
+//			if (trace.isVisited(forwardFiel.position)) {
+//				turnLeft();
+//			}
 			if (!moveForwardAdvanced()) {
 				attack();
 				turnLeft();
 			}
 		}
+	}
+
+	public GameField current() {
+		return map.getField(getPosition());
+	}
+
+	public GameField last() {
+		return trace.getLastPosition() != null ? map.getField(trace.getLastPosition()) : null;
+	}
+
+	public GameField neighbour(Direction targetDirection) {
+		switch (targetDirection) {
+		case EAST:
+			return map.right(getPosition());
+		case NORTH:
+			return map.top(getPosition());
+		case SOUTH:
+			return map.bottom(getPosition());
+		case WEST:
+			return map.left(getPosition());
+		default:
+			throw new NullPointerException("should not be the case");
+		}
+	}
+	
+	public GameField front() {
+		return neighbour(getDirection());
+	}
+
+	public GameField left() {
+		return neighbour(getDirection().left());
+	}
+
+	public GameField right() {
+		return neighbour(getDirection().right());
+	}
+
+	public GameField back() {
+		return neighbour(getDirection().opposite());
 	}
 
 	boolean moveForwardAdvanced() {
@@ -81,6 +124,22 @@ public class SampleRover extends Creature {
 			return fields[position.y - 1][position.x - 1];
 		}
 
+		public GameField top(Point position) {
+			return position.x - 1 > 0 ? fields[position.y - 1][position.x - 2] : null;
+		}
+
+		public GameField bottom(Point position) {
+			return position.x < height ? fields[position.y - 1][position.x] : null;
+		}
+
+		public GameField left(Point position) {
+			return position.y - 1 > 0 ? fields[position.y - 2][position.x - 1] : null;
+		}
+
+		public GameField right(Point position) {
+			return position.y < width ? fields[position.y][position.x - 1] : null;
+		}
+
 		public String print() {
 			StringBuilder builder = new StringBuilder();
 			for (int i = 0; i < width; i++) {
@@ -100,7 +159,7 @@ public class SampleRover extends Creature {
 		private Symbol symbol;
 
 		public GameField() {
-			symbol = Symbol.EMPTY;
+			symbol = Symbol.UNKOWN;
 		}
 
 		private void updateObservation(Observation observation) {
@@ -135,11 +194,15 @@ public class SampleRover extends Creature {
 			this.symbol = symbol;
 		}
 
+		public Point getPosition() {
+			return observation.position;
+		}
+
 	}
 
 	public static enum Symbol {
 
-		CREATURE('c'), EMPTY(' '), HAZARD('h'), WALL('X');
+		UNKOWN('?'), CREATURE('C'), EMPTY('o'), HAZARD('H'), WALL('X');
 
 		private char symbol;
 
