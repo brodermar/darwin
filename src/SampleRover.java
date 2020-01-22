@@ -23,12 +23,26 @@ public class SampleRover extends Creature {
 			Observation[] observations = observe();
 			map.updateObservations(observations);
 			GameField forwardField = front();
-			if(forwardField) {
-				
+			if (trace.isVisited(forwardField.getPosition()) || forwardField.isWall() || forwardField.isHazard()) {
+				GameField leftField = left();
+				if (leftField.isUnknown() || leftField.is
+						|| (leftField.isEmpty() && !trace.isVisited(leftField.getPosition()))) {
+					turnLeft();
+				} else {
+					GameField rightField = right();
+					if(rightField.isUnknown()) {
+						
+					}
+				}
+			} else {
+				if (forwardField.isCreature()) {
+					attack();
+				}
+				moveForwardAdvanced();
 			}
-//			if (trace.isVisited(forwardFiel.position)) {
-//				turnLeft();
-//			}
+			// if (trace.isVisited(forwardFiel.position)) {
+			// turnLeft();
+			// }
 			if (!moveForwardAdvanced()) {
 				attack();
 				turnLeft();
@@ -58,7 +72,7 @@ public class SampleRover extends Creature {
 			throw new NullPointerException("should not be the case");
 		}
 	}
-	
+
 	public GameField front() {
 		return neighbour(getDirection());
 	}
@@ -180,6 +194,26 @@ public class SampleRover extends Creature {
 			default:
 				throw new NullPointerException("cannot identify type");
 			}
+		}
+
+		public boolean isWall() {
+			return observation != null ? observation.type.equals(Type.WALL) : false;
+		}
+
+		public boolean isCreature() {
+			return observation != null ? observation.type.equals(Type.CREATURE) : false;
+		}
+
+		public boolean isHazard() {
+			return observation != null ? observation.type.equals(Type.HAZARD) : false;
+		}
+
+		public boolean isEmpty() {
+			return observation != null ? observation.type.equals(Type.EMPTY) : false;
+		}
+
+		public boolean isUnknown() {
+			return observation == null;
 		}
 
 		private Observation getObservation() {
