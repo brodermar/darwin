@@ -22,27 +22,35 @@ public class SampleRover extends Creature {
 			System.out.println(map.print());
 			Observation[] observations = observe();
 			map.updateObservations(observations);
-			GameField forwardField = front();
-			if (trace.isVisited(forwardField.getPosition()) || forwardField.isWall() || forwardField.isHazard()) {
-				GameField leftField = left();
-				if (leftField.isUnknown() || leftField.is
-						|| (leftField.isEmpty() && !trace.isVisited(leftField.getPosition()))) {
-					turnLeft();
-				} else {
-					GameField rightField = right();
-					if(rightField.isUnknown()) {
-						
-					}
-				}
-			} else {
-				if (forwardField.isCreature()) {
-					attack();
-				}
-				moveForwardAdvanced();
-			}
-			// if (trace.isVisited(forwardFiel.position)) {
+
+			// new version
+			// GameField forwardField = front();
+			// if (trace.isVisited(forwardField.getPosition()) || forwardField.isWall() ||
+			// forwardField.isHazard()) {
+			// GameField leftField = left();
+			// if (leftField.isUnknown() || (leftField.isEmpty() &&
+			// !trace.isVisited(leftField.getPosition()))) {
 			// turnLeft();
+			// } else {
+			// GameField rightField = right();
+			// if (rightField.isUnknown() || rightField.isEmpty() &&
+			// !trace.isVisited(rightField.getPosition())) {
+			// turnRight();
+			// } else {
+			//
 			// }
+			// }
+			// } else {
+			// if (forwardField.isCreature()) {
+			// attack();
+			// }
+			// moveForwardAdvanced();
+			// }
+
+			// simple version
+			if (observations.length >= 1 && trace.isVisited(observations[1].position)) {
+				turnLeft();
+			}
 			if (!moveForwardAdvanced()) {
 				attack();
 				turnLeft();
@@ -135,23 +143,23 @@ public class SampleRover extends Creature {
 		}
 
 		public GameField getField(Point position) {
-			return fields[position.y - 1][position.x - 1];
+			return fields[position.x][position.y];
 		}
 
 		public GameField top(Point position) {
-			return position.x - 1 > 0 ? fields[position.y - 1][position.x - 2] : null;
+			return position.x > 0 ? fields[position.y][position.x - 1] : null;
 		}
 
 		public GameField bottom(Point position) {
-			return position.x < height ? fields[position.y - 1][position.x] : null;
+			return position.x < height - 1 ? fields[position.y - 1][position.x + 1] : null;
 		}
 
 		public GameField left(Point position) {
-			return position.y - 1 > 0 ? fields[position.y - 2][position.x - 1] : null;
+			return position.y > 0 ? fields[position.y][position.x] : null;
 		}
 
 		public GameField right(Point position) {
-			return position.y < width ? fields[position.y][position.x - 1] : null;
+			return position.y < width - 1 ? fields[position.y + 1][position.x] : null;
 		}
 
 		public String print() {
@@ -269,11 +277,11 @@ public class SampleRover extends Creature {
 		}
 
 		public boolean isVisited(Point position) {
-			return fields[position.y - 1][position.x - 1];
+			return fields[position.x][position.y];
 		}
 
 		public void setVisited(Point position) {
-			fields[position.y - 1][position.x - 1] = true;
+			fields[position.x][position.y] = true;
 			lastPosition = currentPosition;
 			currentPosition = position;
 		}
