@@ -24,37 +24,38 @@ public class SampleRover extends Creature {
 			map.updateObservations(observations);
 
 			// new version
-			// GameField forwardField = front();
-			// if (trace.isVisited(forwardField.getPosition()) || forwardField.isWall() ||
-			// forwardField.isHazard()) {
-			// GameField leftField = left();
-			// if (leftField.isUnknown() || (leftField.isEmpty() &&
-			// !trace.isVisited(leftField.getPosition()))) {
-			// turnLeft();
-			// } else {
-			// GameField rightField = right();
-			// if (rightField.isUnknown() || rightField.isEmpty() &&
-			// !trace.isVisited(rightField.getPosition())) {
-			// turnRight();
-			// } else {
-			//
-			// }
-			// }
-			// } else {
-			// if (forwardField.isCreature()) {
-			// attack();
-			// }
-			// moveForwardAdvanced();
-			// }
+			GameField forwardField = front();
+			if (trace.isVisited(forwardField.getPosition()) || forwardField.isWall() || forwardField.isHazard()) {
+				GameField leftField = left();
+				if (leftField.isUnknown() || (leftField.isEmpty() && !trace.isVisited(leftField.getPosition()))) {
+					turnLeft();
+				} else {
+					GameField rightField = right();
+					if (rightField.isUnknown() || rightField.isEmpty() && !trace.isVisited(rightField.getPosition())) {
+						turnRight();
+					} else {
+						if (forwardField.isWall() || forwardField.isHazard()) {
+							turnLeft();
+						} else {
+							moveForwardAdvanced();
+						}
+					}
+				}
+			} else {
+				if (forwardField.isCreature()) {
+					attack();
+				}
+				moveForwardAdvanced();
+			}
 
-			// simple version
-			if (observations.length >= 1 && trace.isVisited(observations[1].position)) {
-				turnLeft();
-			}
-			if (!moveForwardAdvanced()) {
-				attack();
-				turnLeft();
-			}
+			// // simple version
+			// if (observations.length >= 1 && trace.isVisited(observations[1].position)) {
+			// turnLeft();
+			// }
+			// if (!moveForwardAdvanced()) {
+			// attack();
+			// turnLeft();
+			// }
 		}
 	}
 
@@ -142,7 +143,7 @@ public class SampleRover extends Creature {
 			fields = new GameField[width][height];
 			for (int i = 0; i < width; i++) {
 				for (int j = 0; j < height; j++) {
-					fields[i][j] = new GameField();
+					fields[i][j] = new GameField(new Point(i, j));
 				}
 			}
 		}
@@ -206,16 +207,21 @@ public class SampleRover extends Creature {
 	public static class GameField {
 
 		private Observation observation;
+		private Point position;
 		private Symbol symbol;
 
 		// constructs a new game field with the symbol UNKNOWN
-		public GameField() {
+		public GameField(Point position) {
+			this.position = position;
 			symbol = Symbol.UNKOWN;
 		}
 
 		// sets the observation of the field and updates the field symbol depending on
 		// the typ of the observation
 		private void updateObservation(Observation observation) {
+			if (!observation.position.equals(position)) {
+				throw new IllegalArgumentException("position does not match");
+			}
 			this.observation = observation;
 			switch (observation.type) {
 			case CREATURE:
@@ -276,7 +282,7 @@ public class SampleRover extends Creature {
 
 		// returns the position of the observation
 		public Point getPosition() {
-			return observation.position;
+			return position;
 		}
 
 	}
