@@ -19,10 +19,10 @@ public class SampleRover extends Creature {
 	public void run() {
 		setUp();
 		while (true) {
-			System.out.println(map.print());
 			Observation[] observations = observe();
 			map.updateObservations(observations);
-
+			System.out.println(map.print());
+			
 			// new version
 			GameField forwardField = front();
 			if (trace.isVisited(forwardField.getPosition()) || forwardField.isWall() || forwardField.isHazard()) {
@@ -169,34 +169,39 @@ public class SampleRover extends Creature {
 		// returns the field above the given position or null: decrements the
 		// x-coordinate if possible
 		public GameField top(Point position) {
-			return position.x > 0 ? fields[position.y][position.x - 1] : null;
+			return position.y > 0 ? fields[position.x][position.y - 1] : null;
 		}
 
 		// returns the field under the given position or null: increments the
 		// x-coordinate if possible
 		public GameField bottom(Point position) {
-			return position.x < height - 1 ? fields[position.y][position.x + 1] : null;
+			return position.y < height - 1 ? fields[position.x][position.y + 1] : null;
 		}
 
 		// returns the field on the left side of the given position or null: decrements
 		// the y-coordinate if possible
 		public GameField left(Point position) {
-			return position.y > 0 ? fields[position.y - 1][position.x] : null;
+			return position.x > 0 ? fields[position.x - 1][position.y] : null;
 		}
 
 		// return the field right to the given position or null: increments the
 		// y-coordinate if possible
 		public GameField right(Point position) {
-			return position.y < width - 1 ? fields[position.y + 1][position.x] : null;
+			return position.x < width - 1 ? fields[position.x + 1][position.y] : null;
 		}
 
 		// prints the map: returns a Strings
 		public String print() {
 			StringBuilder builder = new StringBuilder();
+//			for (int i = 0; i < width; i++) {
+//				builder.append(i);
+//			}
+//			builder.append('\n');
 			for (int i = 0; i < height; i++) {
 				for (int j = 0; j < width; j++) {
 					builder.append(fields[j][i].print());
 				}
+				builder.append("  " + i);
 				builder.append('\n');
 			}
 			return builder.toString();
@@ -289,7 +294,7 @@ public class SampleRover extends Creature {
 
 	public static enum Symbol {
 
-		UNKOWN('?'), CREATURE('C'), EMPTY('o'), HAZARD('H'), WALL('X');
+		UNKOWN('?'), CREATURE('C'), EMPTY(' '), HAZARD('H'), WALL('#');
 
 		private char symbol;
 
