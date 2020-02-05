@@ -22,7 +22,7 @@ public class SampleRover extends Creature {
 			Observation[] observations = observe();
 			map.updateObservations(observations);
 			System.out.println(map.print());
-			
+
 			// new version
 			GameField forwardField = front();
 			if (trace.isVisited(forwardField.getPosition()) || forwardField.isWall() || forwardField.isHazard()) {
@@ -34,6 +34,9 @@ public class SampleRover extends Creature {
 					if (rightField.isUnknown() || rightField.isEmpty() && !trace.isVisited(rightField.getPosition())) {
 						turnRight();
 					} else {
+						if (turnToLessVisitedField(forwardField, )) {
+							moveForwardAdvanced();
+						}
 						if (forwardField.isWall() || forwardField.isHazard()) {
 							turnLeft();
 						} else {
@@ -57,6 +60,11 @@ public class SampleRover extends Creature {
 			// turnLeft();
 			// }
 		}
+	}
+
+	private boolean turnToLessVisitedField() {
+		// TODO Automatisch generierter Methodenstub
+		return false;
 	}
 
 	// returns the game field of the map of the current position
@@ -193,10 +201,10 @@ public class SampleRover extends Creature {
 		// prints the map: returns a Strings
 		public String print() {
 			StringBuilder builder = new StringBuilder();
-//			for (int i = 0; i < width; i++) {
-//				builder.append(i);
-//			}
-//			builder.append('\n');
+			// for (int i = 0; i < width; i++) {
+			// builder.append(i);
+			// }
+			// builder.append('\n');
 			for (int i = 0; i < height; i++) {
 				for (int j = 0; j < width; j++) {
 					builder.append(fields[j][i].print());
@@ -310,7 +318,8 @@ public class SampleRover extends Creature {
 	public static class Trace {
 
 		int id;
-		private boolean[][] fields;
+		private TraceField[][] fields;
+		// private boolean[][] fields;
 		private Point currentPosition;
 		private Point lastPosition;
 
@@ -319,23 +328,25 @@ public class SampleRover extends Creature {
 			this.id = id;
 			int height = (int) dimension.getHeight();
 			int width = (int) dimension.getWidth();
-			fields = new boolean[width][height];
+			fields = new TraceField[width][height];
+			// fields = new boolean[width][height];
 			for (int i = 0; i < width; i++) {
 				for (int j = 0; j < height; j++) {
-					fields[i][j] = false;
+					// fields[i][j] = false;
+					fields[i][j] = new TraceField();
 				}
 			}
 		}
 
 		// returns the value of the field of the given position
 		public boolean isVisited(Point position) {
-			return fields[position.x][position.y];
+			return fields[position.x][position.y].isVisited();
 		}
 
 		// sets the field of the given position to true, updates the current position to
 		// the given one and sets the old position to the field "lastPosition"
 		public void updatePosition(Point position) {
-			fields[position.x][position.y] = true;
+			fields[position.x][position.y].setVisited();
 			lastPosition = currentPosition;
 			currentPosition = position;
 		}
@@ -350,6 +361,31 @@ public class SampleRover extends Creature {
 		// last position added by "setCurrentPosition()"
 		public Point getLastPosition() {
 			return lastPosition;
+		}
+
+	}
+
+	public static class TraceField {
+
+		private boolean visited;
+		private int visitedTimes;
+
+		public TraceField() {
+			visited = false;
+			visitedTimes = 0;
+		}
+
+		void setVisited() {
+			this.visited = true;
+			visitedTimes++;
+		}
+
+		boolean isVisited() {
+			return visited;
+		}
+
+		int visitedTimes() {
+			return visitedTimes;
 		}
 
 	}
