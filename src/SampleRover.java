@@ -32,9 +32,9 @@ public class SampleRover extends Creature {
 				GameField rightField = right();
 				GameField backField = back();
 				if (!turnToNextUnknown(leftField, rightField, backField)) {
-					//no unknown field left
+					// no unknown field left
 					if (!turnToLeastVisitedField(forwardField, leftField, rightField, backField)) {
-						//front is least visited field
+						// front is least visited field
 						if (forwardField.isCreature()) {
 							attack();
 						}
@@ -169,12 +169,6 @@ public class SampleRover extends Creature {
 		return false;
 	}
 
-	private boolean turnToLessVisitedField(GameField forwardField, GameField leftField, GameField rightField,
-			GameField gameField) {
-		// TODO Automatisch generierter Methodenstub
-		return false;
-	}
-
 	// returns the game field of the map of the current position
 	public GameField getCurrentGameField() {
 		return map.getField(getPosition());
@@ -187,7 +181,7 @@ public class SampleRover extends Creature {
 
 	// updates the trace with the current position
 	public void updateTrace() {
-		trace.updatePosition(getPosition());
+		trace.addVisit(getPosition());
 	}
 
 	// returns the neighbour GameField of the given direction and the current
@@ -446,6 +440,18 @@ public class SampleRover extends Creature {
 			}
 		}
 
+		public int getVisitedTimes(GameField field) {
+			return getVisitedTimes(field.getPosition());
+		}
+
+		public int getVisitedTimes(Point position) {
+			return fields[position.x][position.y].getVisitedTimes();
+		}
+
+		public boolean isVisited(GameField field) {
+			return isVisited(field.getPosition());
+		}
+
 		// returns the value of the field of the given position
 		public boolean isVisited(Point position) {
 			return fields[position.x][position.y].isVisited();
@@ -453,10 +459,14 @@ public class SampleRover extends Creature {
 
 		// sets the field of the given position to true, updates the current position to
 		// the given one and sets the old position to the field "lastPosition"
-		public void updatePosition(Point position) {
+		public void addVisit(Point position) {
 			fields[position.x][position.y].setVisited();
 			lastPosition = currentPosition;
 			currentPosition = position;
+		}
+
+		public void addVisit(GameField field) {
+			addVisit(field.getPosition());
 		}
 
 		// returns the current position, this means the last position added by
@@ -492,7 +502,7 @@ public class SampleRover extends Creature {
 			return visited;
 		}
 
-		int visitedTimes() {
+		int getVisitedTimes() {
 			return visitedTimes;
 		}
 
