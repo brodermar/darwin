@@ -1,5 +1,6 @@
 import java.awt.Dimension;
 import java.awt.Point;
+import java.util.Random;
 
 /**
  * A sample rover to explore the features of the simulation.
@@ -26,25 +27,60 @@ public class SampleRover extends Creature {
 			// new version
 			GameField forwardField = front();
 			if (trace.isVisited(forwardField.getPosition()) || forwardField.isWall() || forwardField.isHazard()) {
+				// should decide
 				GameField leftField = left();
-				if (leftField.isUnknown() || (leftField.isEmpty() && !trace.isVisited(leftField.getPosition()))) {
-					turnLeft();
-				} else {
-					GameField rightField = right();
-					if (rightField.isUnknown() || rightField.isEmpty() && !trace.isVisited(rightField.getPosition())) {
-						turnRight();
-					} else {
-						if (turnToLessVisitedField(forwardField, )) {
-							moveForwardAdvanced();
+				GameField rightField = right();
+				GameField backField = back();
+				if (!turnToNextUnknown(leftField, rightField, backField)) {
+					//no unknown field left
+					if (!turnToLeastVisitedField(forwardField, leftField, rightField, backField)) {
+						//front is least visited field
+						if (forwardField.isCreature()) {
+							attack();
 						}
-						if (forwardField.isWall() || forwardField.isHazard()) {
-							turnLeft();
-						} else {
-							moveForwardAdvanced();
-						}
+						moveForwardAdvanced();
 					}
 				}
+				// GameField leftField = left();
+				// if (leftField.isUnknown() || !trace.isVisited(leftField.getPosition())) {
+				// turnLeft();
+				// } else {
+				// GameField rightField = right();
+				// if (rightField.isUnknown() || !trace.isVisited(rightField.getPosition())) {
+				// turnRight();
+				// } else {
+				// boolean turned = false;
+				// // TODO add functionality
+				// if (forwardField.isWall() || forwardField.isHazard()) {
+				// boolean rightFieldUnknown = rightField.isUnknown();
+				// boolean leftFieldUnknown = leftField.isUnknown();
+				// if (rightFieldUnknown && leftFieldUnknown) {
+				// turnLeft(); //TODO
+				// } else if (rightFieldUnknown) {
+				// turnRight();
+				// turned = true;
+				// } else if (leftFieldUnknown) {
+				// turnLeft();
+				// turned = true;
+				// } else {
+				//
+				// }
+				// } else {
+				//
+				// }
+				// // if (turnToLessVisitedField(forwardField, leftField, rightField, back())) {
+				// // moveForwardAdvanced();
+				// // }
+				// // old code
+				// // if (forwardField.isWall() || forwardField.isHazard()) {
+				// // turnLeft();
+				// // } else {
+				// // moveForwardAdvanced();
+				// // }
+				// }
+				// }
 			} else {
+				// can go forward
 				if (forwardField.isCreature()) {
 					attack();
 				}
@@ -62,7 +98,79 @@ public class SampleRover extends Creature {
 		}
 	}
 
-	private boolean turnToLessVisitedField() {
+	private boolean turnToLeastVisitedField(GameField forwardField, GameField leftField, GameField rightField,
+			GameField backField) {
+		boolean forwardFieldPossible = forwardField.isEmpty() || forwardField.isCreature();
+		boolean leftFieldPossible = leftField.isEmpty() || leftField.isCreature();
+		boolean rightFieldPossible = rightField.isEmpty() || rightField.isCreature();
+		boolean backFieldPossible = backField.isEmpty() || backField.isCreature();
+		boolean turned = false;
+		if (forwardFieldPossible && leftFieldPossible && rightFieldPossible && backFieldPossible) {
+
+		} else if (forwardFieldPossible && leftFieldPossible && rightFieldPossible) {
+
+		} else if (leftFieldPossible && rightFieldPossible && backFieldPossible) {
+
+		} else if (forwardFieldPossible && leftFieldPossible && backFieldPossible) {
+
+		} else if (forwardFieldPossible && rightFieldPossible && backFieldPossible) {
+
+		} else if (forwardFieldPossible && leftFieldPossible) {
+
+		} else if (leftFieldPossible && rightFieldPossible) {
+
+		} else if (rightFieldPossible && backFieldPossible) {
+
+		} else if (backFieldPossible && forwardFieldPossible) {
+
+		} else if (forwardFieldPossible && rightFieldPossible) {
+
+		} else if (leftFieldPossible && backFieldPossible) {
+
+		} else if (forwardFieldPossible) {
+
+		} else if (leftFieldPossible) {
+
+		} else if (rightFieldPossible) {
+
+		} else if (backFieldPossible) {
+
+		} else {
+			throw new IllegalStateException("should not be possible");
+		}
+	}
+
+	private boolean turnToNextUnknown(GameField leftField, GameField rightField, GameField backField) {
+		if (leftField.isUnknown()) {
+			if (rightField.isUnknown()) {
+				turnLeft(); // TODO
+			} else if (backField.isUnknown()) {
+				turnLeft(); // TODO
+			} else {
+				turnLeft();
+			}
+			return true;
+		} else if (rightField.isUnknown()) {
+			if (backField.isUnknown()) {
+				turnRight(); // TODO
+			} else {
+				turnRight();
+			}
+			return true;
+		} else if (backField.isUnknown()) {
+			if (rightField.isUnknown()) {
+				turnRight(); // TODO
+			} else {
+				turnRight();
+				turnRight();
+			}
+			return true;
+		}
+		return false;
+	}
+
+	private boolean turnToLessVisitedField(GameField forwardField, GameField leftField, GameField rightField,
+			GameField gameField) {
 		// TODO Automatisch generierter Methodenstub
 		return false;
 	}
