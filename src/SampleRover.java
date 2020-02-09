@@ -187,18 +187,23 @@ public class SampleRover extends Creature {
 	// returns the neighbour GameField of the given direction and the current
 	// position
 	public GameField neighbour(Direction targetDirection) {
-		switch (targetDirection) {
-		case EAST:
-			return map.right(getPosition());
-		case NORTH:
-			return map.top(getPosition());
-		case SOUTH:
-			return map.bottom(getPosition());
-		case WEST:
-			return map.left(getPosition());
-		default:
-			throw new NullPointerException("should not be the case");
+		return map.neighbour(getPosition(), targetDirection);
+	}
+
+	public boolean rotate(Direction targetDirection) {
+		Direction direction = getDirection();
+		if (direction.left().equals(targetDirection)) {
+			turnLeft();
+			return true;
+		} else if (direction.right().equals(targetDirection)) {
+			turnRight();
+			return true;
+		} else if (direction.opposite().equals(targetDirection)) {
+			turnLeft();
+			turnLeft();
+			return true;
 		}
+		return false;
 	}
 
 	// returns the GameField in the front of the rover
@@ -240,6 +245,26 @@ public class SampleRover extends Creature {
 		updateTrace();
 	}
 
+	public static class NeighbourField {
+
+		private Point position;
+		private Direction direction;
+
+		private NeighbourField(Point position, Direction direction) {
+			this.position = position;
+			this.direction = direction;
+		}
+
+		Point getPosition() {
+			return position;
+		}
+
+		Direction getDirection() {
+			return direction;
+		}
+
+	}
+
 	public static class GameMap {
 
 		private int height;
@@ -255,6 +280,21 @@ public class SampleRover extends Creature {
 				for (int j = 0; j < height; j++) {
 					fields[i][j] = new GameField(new Point(i, j));
 				}
+			}
+		}
+
+		public GameField neighbour(Point position, Direction targetDirection) {
+			switch (targetDirection) {
+			case EAST:
+				return east(position);
+			case NORTH:
+				return north(position);
+			case SOUTH:
+				return south(position);
+			case WEST:
+				return west(position);
+			default:
+				throw new NullPointerException("should not be the case");
 			}
 		}
 
@@ -278,25 +318,25 @@ public class SampleRover extends Creature {
 
 		// returns the field above the given position or null: decrements the
 		// x-coordinate if possible
-		public GameField top(Point position) {
+		public GameField north(Point position) {
 			return position.y > 0 ? fields[position.x][position.y - 1] : null;
 		}
 
 		// returns the field under the given position or null: increments the
 		// x-coordinate if possible
-		public GameField bottom(Point position) {
+		public GameField south(Point position) {
 			return position.y < height - 1 ? fields[position.x][position.y + 1] : null;
 		}
 
 		// returns the field on the left side of the given position or null: decrements
 		// the y-coordinate if possible
-		public GameField left(Point position) {
+		public GameField west(Point position) {
 			return position.x > 0 ? fields[position.x - 1][position.y] : null;
 		}
 
 		// return the field right to the given position or null: increments the
 		// y-coordinate if possible
-		public GameField right(Point position) {
+		public GameField east(Point position) {
 			return position.x < width - 1 ? fields[position.x + 1][position.y] : null;
 		}
 
