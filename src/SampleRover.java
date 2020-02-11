@@ -1,6 +1,9 @@
 import java.awt.Dimension;
 import java.awt.Point;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 /**
  * A sample rover to explore the features of the simulation.
@@ -13,6 +16,10 @@ public class SampleRover extends Creature {
 	public static final String DESCRIPTION = "A sample rover to explore the features of the simulation.";
 
 	private static GameMap map;
+	private GameField frontField;
+	private GameField leftField;
+	private GameField rightField;
+	private GameField backField;
 
 	private Trace trace;
 
@@ -25,65 +32,17 @@ public class SampleRover extends Creature {
 			System.out.println(map.print());
 
 			// new version
-			GameField forwardField = front();
-			if (trace.isVisited(forwardField.getPosition()) || forwardField.isWall() || forwardField.isHazard()) {
+			if (trace.isVisited(frontField.getPosition()) || frontField.isWall() || frontField.isHazard()) {
 				// should decide
-				GameField leftField = left();
-				GameField rightField = right();
-				GameField backField = back();
-				if (!turnToNextUnknown(leftField, rightField, backField)) {
+				if (!rotateToNextUnknown()) {
 					// no unknown field left
-					if (!turnToLeastVisitedField(forwardField, leftField, rightField, backField)) {
+					if (!turnToLeastVisitedField()) {
 						// front is least visited field
-						if (forwardField.isCreature()) {
-							attack();
-						}
 						moveForwardAdvanced();
 					}
 				}
-				// GameField leftField = left();
-				// if (leftField.isUnknown() || !trace.isVisited(leftField.getPosition())) {
-				// turnLeft();
-				// } else {
-				// GameField rightField = right();
-				// if (rightField.isUnknown() || !trace.isVisited(rightField.getPosition())) {
-				// turnRight();
-				// } else {
-				// boolean turned = false;
-				// // TODO add functionality
-				// if (forwardField.isWall() || forwardField.isHazard()) {
-				// boolean rightFieldUnknown = rightField.isUnknown();
-				// boolean leftFieldUnknown = leftField.isUnknown();
-				// if (rightFieldUnknown && leftFieldUnknown) {
-				// turnLeft(); //TODO
-				// } else if (rightFieldUnknown) {
-				// turnRight();
-				// turned = true;
-				// } else if (leftFieldUnknown) {
-				// turnLeft();
-				// turned = true;
-				// } else {
-				//
-				// }
-				// } else {
-				//
-				// }
-				// // if (turnToLessVisitedField(forwardField, leftField, rightField, back())) {
-				// // moveForwardAdvanced();
-				// // }
-				// // old code
-				// // if (forwardField.isWall() || forwardField.isHazard()) {
-				// // turnLeft();
-				// // } else {
-				// // moveForwardAdvanced();
-				// // }
-				// }
-				// }
 			} else {
 				// can go forward
-				if (forwardField.isCreature()) {
-					attack();
-				}
 				moveForwardAdvanced();
 			}
 
@@ -98,138 +57,128 @@ public class SampleRover extends Creature {
 		}
 	}
 
-	private boolean turnToLeastVisitedField(GameField forwardField, GameField leftField, GameField rightField,
-			GameField backField) {
-		boolean forwardFieldPossible = forwardField.isEmpty() || forwardField.isCreature();
-		boolean leftFieldPossible = leftField.isEmpty() || leftField.isCreature();
-		boolean rightFieldPossible = rightField.isEmpty() || rightField.isCreature();
-		boolean backFieldPossible = backField.isEmpty() || backField.isCreature();
-		boolean turned = false;
-		if (forwardFieldPossible && leftFieldPossible && rightFieldPossible && backFieldPossible) {
-
-		} else if (forwardFieldPossible && leftFieldPossible && rightFieldPossible) {
-
-		} else if (leftFieldPossible && rightFieldPossible && backFieldPossible) {
-
-		} else if (forwardFieldPossible && leftFieldPossible && backFieldPossible) {
-
-		} else if (forwardFieldPossible && rightFieldPossible && backFieldPossible) {
-
-		} else if (forwardFieldPossible && leftFieldPossible) {
-
-		} else if (leftFieldPossible && rightFieldPossible) {
-
-		} else if (rightFieldPossible && backFieldPossible) {
-
-		} else if (backFieldPossible && forwardFieldPossible) {
-
-		} else if (forwardFieldPossible && rightFieldPossible) {
-
-		} else if (leftFieldPossible && backFieldPossible) {
-
-		} else if (forwardFieldPossible) {
-
-		} else if (leftFieldPossible) {
-
-		} else if (rightFieldPossible) {
-
-		} else if (backFieldPossible) {
-
-		} else {
-			throw new IllegalStateException("should not be possible");
+	private boolean turnToLeastVisitedField() {
+		int leastVisitedCount = frontField != null && frontField.isVisitable() ? trace.getVisitedTimes(frontField)
+				: Integer.MAX_VALUE;
+		Direction turnDirection = getDirection();
+		int visitedTimes = 0;
+		if (leftField != null && leftField.isVisitable()) {
+			visitedTimes = trace.getVisitedTimes(leftField);
+			if (visitedTimes < leastVisitedCount) {
+				leastVisitedCount = visitedTimes;
+				turnDirection = getDirection().left();
+			}
 		}
+		if (rightField != null && rightField.isVisitable()) {
+			visitedTimes = trace.getVisitedTimes(rightField);
+			if (visitedTimes < leastVisitedCount) {
+				leastVisitedCount = visitedTimes;
+				turnDirection = getDirection().right();
+			}
+		}
+		if (backField != null && backField.isVisitable()) {
+			visitedTimes = trace.getVisitedTimes(backField);
+			if (visitedTimes < leastVisitedCount) {
+				turnDirection = getDirection().opposite();
+			}
+		}
+		return rotate(turnDirection);
 	}
 
-	private boolean turnToNextUnknown(GameField leftField, GameField rightField, GameField backField) {
+	public boolean rotateToNextUnknown() {
 		if (leftField.isUnknown()) {
-			if (rightField.isUnknown()) {
-				turnLeft(); // TODO
-			} else if (backField.isUnknown()) {
-				turnLeft(); // TODO
-			} else {
-				turnLeft();
-			}
+			rotateLeft();
 			return true;
 		} else if (rightField.isUnknown()) {
-			if (backField.isUnknown()) {
-				turnRight(); // TODO
-			} else {
-				turnRight();
-			}
+			rotateRight();
 			return true;
 		} else if (backField.isUnknown()) {
-			if (rightField.isUnknown()) {
-				turnRight(); // TODO
-			} else {
-				turnRight();
-				turnRight();
-			}
+			rotateBack();
 			return true;
 		}
 		return false;
 	}
 
+	public void rotateLeft() {
+		turnLeft();
+		determineNeighbours();
+	}
+
+	public void rotateRight() {
+		turnRight();
+		determineNeighbours();
+	}
+
+	public void rotateBack() {
+		turnLeft();
+		turnLeft();
+		determineNeighbours();
+	}
+
 	// returns the game field of the map of the current position
-	public GameField getCurrentGameField() {
+	public GameField getCurrentField() {
 		return map.getField(getPosition());
 	}
 
 	// returns the game field of the map of the last position
-	public GameField getLastGameField() {
+	public GameField getLastField() {
 		return trace.getLastPosition() != null ? map.getField(trace.getLastPosition()) : null;
 	}
 
 	// updates the trace with the current position
-	public void updateTrace() {
+	private void updateTrace() {
 		trace.addVisit(getPosition());
 	}
 
 	// returns the neighbour GameField of the given direction and the current
 	// position
-	public GameField neighbour(Direction targetDirection) {
+	private GameField neighbour(Direction targetDirection) {
 		return map.neighbour(getPosition(), targetDirection);
 	}
 
 	public boolean rotate(Direction targetDirection) {
 		Direction direction = getDirection();
 		if (direction.left().equals(targetDirection)) {
-			turnLeft();
+			rotateLeft();
 			return true;
 		} else if (direction.right().equals(targetDirection)) {
-			turnRight();
+			rotateRight();
 			return true;
 		} else if (direction.opposite().equals(targetDirection)) {
-			turnLeft();
-			turnLeft();
+			rotateBack();
 			return true;
 		}
 		return false;
 	}
 
 	// returns the GameField in the front of the rover
-	public GameField front() {
+	private GameField frontField() {
 		return neighbour(getDirection());
 	}
 
 	// returns the GameField to the left of the rover
-	public GameField left() {
+	private GameField leftField() {
 		return neighbour(getDirection().left());
 	}
 
 	// returns the GameField to the right of the rover
-	public GameField right() {
+	private GameField rightField() {
 		return neighbour(getDirection().right());
 	}
 
 	// returns the GameField in the back of the rover
-	public GameField back() {
+	private GameField backField() {
 		return neighbour(getDirection().opposite());
 	}
 
 	boolean moveForwardAdvanced() {
+		if (frontField.isCreature()) {
+			attack();
+		}
 		boolean returnVal = moveForward();
 		if (returnVal) {
 			updateTrace();
+			determineNeighbours();
 			map.updateObservation(new Observation(trace.getLastPosition(), getGameTime()));
 		}
 		return returnVal;
@@ -243,27 +192,35 @@ public class SampleRover extends Creature {
 		}
 		trace = new Trace(getMapDimensions(), getId());
 		updateTrace();
+		determineNeighbours();
 	}
 
-	public static class NeighbourField {
-
-		private Point position;
-		private Direction direction;
-
-		private NeighbourField(Point position, Direction direction) {
-			this.position = position;
-			this.direction = direction;
-		}
-
-		Point getPosition() {
-			return position;
-		}
-
-		Direction getDirection() {
-			return direction;
-		}
-
+	private void determineNeighbours() {
+		frontField = frontField();
+		leftField = leftField();
+		rightField = rightField();
+		backField = backField();
 	}
+
+//	public static class NeighbourField {
+//
+//		private Point position;
+//		private Direction direction;
+//
+//		private NeighbourField(Point position, Direction direction) {
+//			this.position = position;
+//			this.direction = direction;
+//		}
+//
+//		Point getPosition() {
+//			return position;
+//		}
+//
+//		Direction getDirection() {
+//			return direction;
+//		}
+//
+//	}
 
 	public static class GameMap {
 
@@ -394,6 +351,10 @@ public class SampleRover extends Creature {
 			default:
 				throw new NullPointerException("cannot identify type");
 			}
+		}
+
+		public boolean isVisitable() {
+			return !isHazard() && !isWall();
 		}
 
 		// observation != null type == WALL
