@@ -1,16 +1,13 @@
 import java.awt.Dimension;
 import java.awt.Point;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * A sample rover to explore the features of the simulation.
@@ -52,15 +49,6 @@ public class SampleRover extends Creature {
 				// can go forward
 				moveForwardAdvanced();
 			}
-
-			// // simple version
-			// if (observations.length >= 1 && trace.isVisited(observations[1].position)) {
-			// turnLeft();
-			// }
-			// if (!moveForwardAdvanced()) {
-			// attack();
-			// turnLeft();
-			// }
 		}
 	}
 
@@ -209,28 +197,10 @@ public class SampleRover extends Creature {
 		backField = backField();
 	}
 
-//	public static class NeighbourField {
-//
-//		private Point position;
-//		private Direction direction;
-//
-//		private NeighbourField(Point position, Direction direction) {
-//			this.position = position;
-//			this.direction = direction;
-//		}
-//
-//		Point getPosition() {
-//			return position;
-//		}
-//
-//		Direction getDirection() {
-//			return direction;
-//		}
-//
-//	}
-
 	public static class GameMap {
 
+		private RoutableGraph<GameField> graph;
+		private Map<Point, RoutableVertex<GameField>> vertices;
 		private int height;
 		private int width;
 		private GameField[][] fields;
@@ -240,9 +210,13 @@ public class SampleRover extends Creature {
 			height = (int) dimension.getHeight();
 			width = (int) dimension.getWidth();
 			fields = new GameField[width][height];
+			vertices = new HashMap<>();
+			graph = new RoutableGraphImpl<GameField>();
 			for (int i = 0; i < width; i++) {
 				for (int j = 0; j < height; j++) {
-					fields[i][j] = new GameField(new Point(i, j));
+					Point position = new Point(i, j);
+					fields[i][j] = new GameField(position);
+					vertices.put(position, graph.addVertex(fields[i][j]));
 				}
 			}
 		}
@@ -389,10 +363,6 @@ public class SampleRover extends Creature {
 			return observation == null;
 		}
 
-		private Observation getObservation() {
-			return observation;
-		}
-
 		// returns the symbol determinded by updateObservation(..)
 		public char print() {
 			return symbol.getSymbol();
@@ -439,10 +409,8 @@ public class SampleRover extends Creature {
 			int height = (int) dimension.getHeight();
 			int width = (int) dimension.getWidth();
 			fields = new TraceField[width][height];
-			// fields = new boolean[width][height];
 			for (int i = 0; i < width; i++) {
 				for (int j = 0; j < height; j++) {
-					// fields[i][j] = false;
 					fields[i][j] = new TraceField();
 				}
 			}
@@ -570,7 +538,7 @@ public class SampleRover extends Creature {
 
 	}
 	
-	public class RoutableGraphImpl<E> implements RoutableGraph<E> {
+	public static class RoutableGraphImpl<E> implements RoutableGraph<E> {
 
 		private Map<RoutableVertexImpl<E>, List<RoutableEdgeImpl<E>>> vertices;
 
@@ -811,7 +779,7 @@ public class SampleRover extends Creature {
 
 	}
 	
-	public class Dijkstra<E> {
+	public static class Dijkstra<E> {
 
 		private RoutableGraph<E> graph;
 		private RoutableVertex<E> start;
