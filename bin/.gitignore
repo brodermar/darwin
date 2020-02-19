@@ -150,3 +150,11 @@
 /speed2.gif
 /speed3.gif
 /speed4.gif
+/SampleRover$Dijkstra$RoutableVertexComparator.class
+/SampleRover$Dijkstra.class
+/SampleRover$RoutableEdge.class
+/SampleRover$RoutableGraph.class
+/SampleRover$RoutableGraphImpl$RoutableEdgeImpl.class
+/SampleRover$RoutableGraphImpl$RoutableVertexImpl.class
+/SampleRover$RoutableGraphImpl.class
+/SampleRover$RoutableVertex.class
