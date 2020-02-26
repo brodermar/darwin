@@ -200,7 +200,6 @@ public class SampleRover extends Creature {
 	public static class GameMap {
 
 		private RoutableGraph<GameField> graph;
-		private Map<Point, RoutableVertex<GameField>> vertices;
 		private int height;
 		private int width;
 		private GameField[][] fields;
@@ -210,13 +209,10 @@ public class SampleRover extends Creature {
 			height = (int) dimension.getHeight();
 			width = (int) dimension.getWidth();
 			fields = new GameField[width][height];
-			vertices = new HashMap<>();
 			graph = new RoutableGraphImpl<GameField>();
 			for (int i = 0; i < width; i++) {
 				for (int j = 0; j < height; j++) {
-					Point position = new Point(i, j);
-					fields[i][j] = new GameField(position);
-					vertices.put(position, graph.addVertex(fields[i][j]));
+					fields[i][j] = new GameField(new Point(i, j), graph.addVertex(fields[i][j]));
 				}
 			}
 		}
@@ -238,16 +234,25 @@ public class SampleRover extends Creature {
 
 		// updates matching fields with the new observations
 		public void updateObservations(Observation[] observations) {
+			GameField lastField = null;
 			for (Observation observation : observations) {
-				updateObservation(observation);
+				GameField curField = updateObservation(observation);
+				if (lastField != null && lastField.isVisitable() && curField.isVisitable()) {
+					addEdge(lastField, curField, 1.0);
+				}
 			}
+		}
+
+		private RoutableEdge<GameField> addEdge(GameField field1, GameField field2, double weight) {
+			return graph.addEdge(field1.getVertex(), field2.getVertex(), weight);
 		}
 
 		// updates the field of the position given by the observation with the
 		// observation
-		public void updateObservation(Observation observation) {
+		public GameField updateObservation(Observation observation) {
 			GameField field = getField(observation.position);
 			field.updateObservation(observation);
+			return field;
 		}
 
 		public GameField getField(Point position) {
@@ -300,12 +305,14 @@ public class SampleRover extends Creature {
 	public static class GameField {
 
 		private Observation observation;
+		private RoutableVertex<GameField> vertex;
 		private Point position;
 		private Symbol symbol;
 
 		// constructs a new game field with the symbol UNKNOWN
-		public GameField(Point position) {
+		public GameField(Point position, RoutableVertex<GameField> vertex) {
 			this.position = position;
+			this.vertex = vertex;
 			symbol = Symbol.UNKOWN;
 		}
 
@@ -332,6 +339,10 @@ public class SampleRover extends Creature {
 			default:
 				throw new NullPointerException("cannot identify type");
 			}
+		}
+
+		public RoutableVertex<GameField> getVertex() {
+			return vertex;
 		}
 
 		public boolean isVisitable() {
@@ -483,9 +494,9 @@ public class SampleRover extends Creature {
 		}
 
 	}
-	
+
 	public interface RoutableVertex<E> {
-		
+
 		E getElement();
 
 		boolean isVisited();
@@ -499,9 +510,9 @@ public class SampleRover extends Creature {
 		RoutableVertex<E> getPredecessor();
 
 		RoutableVertex<E> setPredecessor(RoutableVertex<E> vertex);
-		
+
 	}
-	
+
 	public interface RoutableGraph<E> {
 
 		RoutableVertex<E> addVertex(E element);
@@ -523,7 +534,7 @@ public class SampleRover extends Creature {
 		Set<RoutableEdge<E>> getEdges();
 
 	}
-	
+
 	public interface RoutableEdge<E> {
 
 		double getWeight();
@@ -537,7 +548,7 @@ public class SampleRover extends Creature {
 		RoutableVertex<E> getOtherVertex(RoutableVertex<E> vertex);
 
 	}
-	
+
 	public static class RoutableGraphImpl<E> implements RoutableGraph<E> {
 
 		private Map<RoutableVertexImpl<E>, List<RoutableEdgeImpl<E>>> vertices;
@@ -638,7 +649,8 @@ public class SampleRover extends Creature {
 			private RoutableVertexImpl<T> firstVertex;
 			private RoutableVertexImpl<T> secondVertex;
 
-			private RoutableEdgeImpl(RoutableVertexImpl<T> firstVertex, RoutableVertexImpl<T> secondVertex, double weight) {
+			private RoutableEdgeImpl(RoutableVertexImpl<T> firstVertex, RoutableVertexImpl<T> secondVertex,
+					double weight) {
 				this.firstVertex = firstVertex;
 				this.secondVertex = secondVertex;
 				this.weight = weight;
@@ -778,7 +790,7 @@ public class SampleRover extends Creature {
 		}
 
 	}
-	
+
 	public static class Dijkstra<E> {
 
 		private RoutableGraph<E> graph;
