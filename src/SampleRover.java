@@ -796,6 +796,7 @@ public class SampleRover extends Creature {
 		private RoutableGraph<E> graph;
 		private RoutableVertex<E> start;
 		private RoutableVertex<E> target;
+		private Condition<E> terminationCondition;
 		private PriorityQueue<RoutableVertex<E>> queue;
 
 		public Dijkstra() {
@@ -863,6 +864,13 @@ public class SampleRover extends Creature {
 
 		}
 
+	}
+	
+	@FunctionalInterface
+	public static interface Condition<E> {
+		
+		public boolean test(E element);
+		
 	}
 
 	@Override
