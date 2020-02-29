@@ -19,83 +19,134 @@ public class SampleRover extends Creature {
 	public static final String AUTHOR = "Mark Broderius";
 	public static final String DESCRIPTION = "A sample rover to explore the features of the simulation.";
 
+	// the game map, which will be revealed during the game by various instances of
+	// the rover
 	private static GameMap map;
 
-	private Dijkstra<GameField> dijkstra;
+	// the path get passed to the map by the rover for calculations of the dijkstra
 	private Path<GameField> path;
 
+	// the neighbors of the rover
 	private GameField frontField;
 	private GameField leftField;
 	private GameField rightField;
 	private GameField backField;
 
+	// the trace of the rover
 	private Trace trace;
 
 	@Override
 	public void run() {
 		setUp();
 		while (true) {
-			Observation[] observations = observe();
-			map.updateObservations(observations);
+			map.updateObservations(observe());
+			if (map.isTreasureKnown()) {
+				moveToField(map.getTreasure());
+			}
 			System.out.println(map.print());
-
-			// new version
-			if (trace.isVisited(frontField.getPosition()) || frontField.isNotVisitable()) {
-				// should decide
-				moveToNextUnknown();
-//				if (!rotateToNextUnknown()) {
-//					// no unknown field left
-//					if (!turnToLeastVisitedField()) {
-//						// front is least visited field
-//						moveForwardAdvanced();
-//					}
-//				}
+			uncover();
+			if (trace.isVisited(frontField.getPosition()) || frontField.isNotVisitable()
+					|| frontField.isFriend(getClassId())) {
+				if (!moveToNextUnknown()) {
+					turnToLeastVisitedField();
+					if(!moveForwardAdvanced()) {
+						rotateAround();
+					}
+				}
 			} else {
-				// can go forward
-				moveForwardAdvanced();
+				if(!moveForwardAdvanced()) {
+					rotateAround();
+				}
 			}
 		}
 	}
 
-	private void moveToNextUnknown() {
+	public Direction uncover() {
+		Direction direction = getDirection();
 		if (!rotateToNextUnknown()) {
-			path.load(dijkstra.calc());
+			return direction;
+		}
+		while (true) {
+			map.updateObservations(observe());
+			if (map.isTreasureKnown()) {
+				moveToField(map.getTreasure());
+				return direction;
+			}
+			if (!rotateToNextUnknown()) {
+				return direction;
+			}
+		}
+	}
+
+	private void moveToField(GameField target) {
+		map.calcPathToTarget(path, getCurrentField(), target);
+		List<GameField> elements = path.getElements();
+		if (elements.size() < 2) {
+			return;
+		}
+		for (int i = 1; i < elements.size(); i++) {
+			GameField curField = elements.get(i);
+			rotate(curField);
+			map.updateObservations(observe());
+			if (map.isTreasureKnown() && !target.equals(map.getTreasure())) {
+				return;
+			}
+			if (!moveForwardAdvanced()) {
+				return;
+			}
+		}
+	}
+
+	private boolean moveToNextUnknown() {
+		if (!rotateToNextUnknown()) {
+			map.calcPathToNextUnknown(path, map.getField(getPosition()));
 			List<GameField> elements = path.getElements();
+			if (elements.size() < 2) {
+				return false;
+			}
 			for (int i = 1; i < elements.size(); i++) {
-				GameField curField = elements.get(i);
-				rotate(curField);
-				moveForwardAdvanced();
+				rotate(elements.get(i));
+				map.updateObservations(observe());
+				if (map.isTreasureKnown()) {
+					moveToField(map.getTreasure());
+					return true;
+				}
+				if (!moveForwardAdvanced()) {
+					return false;
+				}
 			}
 			rotateToNextUnknown();
 		}
+		return true;
 	}
 
 	private boolean turnToLeastVisitedField() {
-		int leastVisitedCount = frontField != null && frontField.isVisitable() ? trace.getVisitedTimes(frontField)
-				: Integer.MAX_VALUE;
-		Direction turnDirection = getDirection();
-		int visitedTimes = 0;
-		if (leftField != null && leftField.isVisitable()) {
-			visitedTimes = trace.getVisitedTimes(leftField);
-			if (visitedTimes < leastVisitedCount) {
-				leastVisitedCount = visitedTimes;
-				turnDirection = getDirection().left();
+		GameField selected = null;
+		if (frontField != null) {
+			if (selected == null || (frontField.isVisitable() && !frontField.isFriend(getClassId())
+					&& trace.getVisitedTimes(frontField) < trace.getVisitedTimes(selected))) {
+				selected = frontField;
 			}
 		}
-		if (rightField != null && rightField.isVisitable()) {
-			visitedTimes = trace.getVisitedTimes(rightField);
-			if (visitedTimes < leastVisitedCount) {
-				leastVisitedCount = visitedTimes;
-				turnDirection = getDirection().right();
+		if (leftField != null) {
+			if (selected == null || (leftField.isVisitable() && !frontField.isFriend(getClassId())
+					&& trace.getVisitedTimes(leftField) < trace.getVisitedTimes(selected))) {
+				selected = leftField;
 			}
 		}
-		if (backField != null && backField.isVisitable()) {
-			visitedTimes = trace.getVisitedTimes(backField);
-			if (visitedTimes < leastVisitedCount) {
-				turnDirection = getDirection().opposite();
+		if (rightField != null) {
+			if (selected == null || (rightField.isVisitable() && !frontField.isFriend(getClassId())
+					&& trace.getVisitedTimes(rightField) < trace.getVisitedTimes(selected))) {
+				selected = rightField;
 			}
 		}
-		return rotate(turnDirection);
+		if (backField != null) {
+			if (selected == null || (backField.isVisitable() && !frontField.isFriend(getClassId())
+					&& trace.getVisitedTimes(backField) < trace.getVisitedTimes(selected))) {
+				selected = backField;
+			}
+		}
+		return rotate(selected);
 	}
 
 	public boolean rotateToNextUnknown() {
@@ -106,7 +157,7 @@ public class SampleRover extends Creature {
 			rotateRight();
 			return true;
 		} else if (backField.isUnknown()) {
-			rotateBack();
+			rotateAround();
 			return true;
 		}
 		return false;
@@ -122,7 +173,7 @@ public class SampleRover extends Creature {
 		determineNeighbours();
 	}
 
-	public void rotateBack() {
+	public void rotateAround() {
 		turnLeft();
 		turnLeft();
 		determineNeighbours();
@@ -145,15 +196,14 @@ public class SampleRover extends Creature {
 	}
 
 	public boolean rotate(Direction targetDirection) {
-		Direction direction = getDirection();
-		if (direction.left().equals(targetDirection)) {
+		if (getDirection().left().equals(targetDirection)) {
 			rotateLeft();
 			return true;
-		} else if (direction.right().equals(targetDirection)) {
+		} else if (getDirection().right().equals(targetDirection)) {
 			rotateRight();
 			return true;
-		} else if (direction.opposite().equals(targetDirection)) {
-			rotateBack();
+		} else if (getDirection().opposite().equals(targetDirection)) {
+			rotateAround();
 			return true;
 		}
 		return false;
@@ -189,20 +239,23 @@ public class SampleRover extends Creature {
 	}
 
 	boolean moveForwardAdvanced() {
-		if (frontField.isCreature()) {
+		if (frontField.isEnemy(getClassId())) {
 			attack();
+			return false;
 		}
-		boolean returnVal = moveForward();
-		if (returnVal) {
+		if (frontField.isFriend(getClassId())) {
+			return false;
+		}
+//		boolean returnVal = moveForward();
+		if (moveForward()) {
 			updateWithCurrentPosition();
+			return true;
 		}
-		return returnVal;
+		return false;
 	}
 
 	private void updateWithCurrentPosition() {
 		trace.addVisit(getPosition());
-		dijkstra.setStartPosition(map.getVertex(getPosition()));
-		path.clear();
 		determineNeighbours();
 		map.updateObservation(new Observation(trace.getLastPosition(), getGameTime()));
 	}
@@ -214,15 +267,6 @@ public class SampleRover extends Creature {
 			map = new GameMap(getMapDimensions());
 		}
 		trace = new Trace(getMapDimensions(), getId());
-		dijkstra = new Dijkstra<>();
-		dijkstra.setGraph(map.getGraph());
-		dijkstra.setEscapeCondition(new Predicate<RoutableVertex<GameField>>() {
-			@Override
-			public boolean test(RoutableVertex<GameField> element) {
-				return map.bordersUnknown(element.getElement());
-			}
-		});
-		dijkstra.setStartPosition(map.getVertex(getPosition()));
 		path = new Path<GameField>();
 		trace.addVisit(getPosition());
 		determineNeighbours();
@@ -237,7 +281,11 @@ public class SampleRover extends Creature {
 
 	public static class GameMap {
 
+		public final UnknownNeighboursPredicate hasUnknownNeighboursPredicate;
+		public final EqualityPredicate equalityPredicate;
+
 		private RoutableGraph<GameField> graph;
+		private Dijkstra<GameField> dijkstra;
 		private int height;
 		private int width;
 		private GameField[][] fields;
@@ -258,16 +306,40 @@ public class SampleRover extends Creature {
 					vertices.put(position, graph.addVertex(fields[i][j]));
 				}
 			}
+			dijkstra = new Dijkstra<>();
+			dijkstra.setGraph(graph);
+			hasUnknownNeighboursPredicate = new UnknownNeighboursPredicate();
+			equalityPredicate = new EqualityPredicate(vertices.get(fields[0][0].getPosition()));
+		}
+
+		public Path<GameField> calcPathToTarget(Path<GameField> path, GameField startPosition,
+				GameField targetPosition) {
+			equalityPredicate.setTargetPosition(getVertex(targetPosition));
+			dijkstra.setEscapeCondition(equalityPredicate);
+			dijkstra.setStartPosition(getVertex(startPosition));
+			path.load(dijkstra.calc());
+			return path;
+		}
+
+		public Path<GameField> calcPathToNextUnknown(Path<GameField> path, GameField startPosition) {
+			dijkstra.setEscapeCondition(hasUnknownNeighboursPredicate);
+			dijkstra.setStartPosition(getVertex(startPosition));
+			path.load(dijkstra.calc());
+			return path;
+		}
+
+		public RoutableVertex<GameField> getVertex(GameField field) {
+			return getVertex(field.getPosition());
 		}
 
 		public RoutableVertex<GameField> getVertex(Point position) {
 			return vertices.get(position);
 		}
-		
+
 		public boolean isTreasureKnown() {
 			return treasure != null;
 		}
-		
+
 		public GameField getTreasure() {
 			return treasure;
 		}
@@ -307,7 +379,7 @@ public class SampleRover extends Creature {
 			RoutableVertex<GameField> first = vertices.get(field1.getPosition());
 			RoutableVertex<GameField> second = vertices.get(field2.getPosition());
 			if (!graph.containsEdge(first, second, weight)) {
-				graph.addEdge(vertices.get(field1.getPosition()), vertices.get(field2.getPosition()), weight);
+				graph.addEdge(first, second, weight);
 			}
 		}
 
@@ -316,7 +388,7 @@ public class SampleRover extends Creature {
 		public GameField updateObservation(Observation observation) {
 			GameField field = getField(observation.position);
 			field.updateObservation(observation);
-			if(field.isTreasure()) {
+			if (field.isTreasure()) {
 				treasure = field;
 			}
 			return field;
@@ -397,10 +469,6 @@ public class SampleRover extends Creature {
 		// prints the map: returns a Strings
 		public String print() {
 			StringBuilder builder = new StringBuilder();
-			// for (int i = 0; i < width; i++) {
-			// builder.append(i);
-			// }
-			// builder.append('\n');
 			for (int i = 0; i < height; i++) {
 				for (int j = 0; j < width; j++) {
 					builder.append(fields[j][i].print());
@@ -411,19 +479,53 @@ public class SampleRover extends Creature {
 			return builder.toString();
 		}
 
+		private class UnknownNeighboursPredicate implements Predicate<RoutableVertex<GameField>> {
+
+			@Override
+			public boolean test(RoutableVertex<GameField> element) {
+				return bordersUnknown(element.getElement());
+			}
+
+		}
+
+		private class EqualityPredicate implements Predicate<RoutableVertex<GameField>> {
+
+			private RoutableVertex<GameField> targetPosition;
+
+			private EqualityPredicate(RoutableVertex<GameField> targetPosition) {
+				if (targetPosition == null) {
+					throw new NullPointerException("target position is not allowed to be null");
+				}
+				this.targetPosition = targetPosition;
+			}
+
+			@Override
+			public boolean test(RoutableVertex<GameField> position) {
+				return targetPosition.equals(position);
+			}
+
+			private RoutableVertex<GameField> setTargetPosition(RoutableVertex<GameField> targetPosition) {
+				if (targetPosition == null) {
+					throw new NullPointerException("target position is not allowed to be null");
+				}
+				RoutableVertex<GameField> old = this.targetPosition;
+				this.targetPosition = targetPosition;
+				return old;
+			}
+
+		}
+
 	}
 
 	public static class GameField {
 
 		private Observation observation;
-//		private RoutableVertex<GameField> vertex;
 		private Point position;
 		private Symbol symbol;
 
 		// constructs a new game field with the symbol UNKNOWN
 		public GameField(Point position) {
 			this.position = position;
-//			this.vertex = vertex;
 			symbol = Symbol.UNKOWN;
 		}
 
@@ -436,33 +538,35 @@ public class SampleRover extends Creature {
 			this.observation = observation;
 			switch (observation.type) {
 			case CREATURE:
-				setSymbol(Symbol.CREATURE);
+				this.symbol = Symbol.CREATURE;
 				break;
 			case EMPTY:
-				setSymbol(Symbol.EMPTY);
+				this.symbol = Symbol.EMPTY;
 				break;
 			case HAZARD:
-				setSymbol(Symbol.HAZARD);
+				this.symbol = Symbol.HAZARD;
 				break;
 			case WALL:
-				setSymbol(Symbol.WALL);
+				this.symbol = Symbol.WALL;
 				break;
 			default:
 				throw new NullPointerException("cannot identify type");
 			}
 		}
 
-//		public RoutableVertex<GameField> getVertex() {
-//			return vertex;
-//		}
+		public Observation getObservation() {
+			return observation;
+		}
 
 		public boolean isEnemy(int referenceClassId) {
+			Observation observation = getObservation();
 			return observation != null
 					? (observation.type == Type.CREATURE) && (observation.classId != referenceClassId)
 					: false;
 		}
 
 		public boolean isFriend(int referenceClassId) {
+			Observation observation = getObservation();
 			return observation != null
 					? (observation.type == Type.CREATURE) && (observation.classId == referenceClassId)
 					: false;
@@ -478,49 +582,52 @@ public class SampleRover extends Creature {
 
 		// observation != null type == WALL
 		public boolean isWall() {
+			Observation observation = getObservation();
 			return observation != null ? observation.type.equals(Type.WALL) : false;
 		}
 
 		// observation != null type == CREATURE
 		public boolean isCreature() {
+			Observation observation = getObservation();
 			return observation != null ? observation.type.equals(Type.CREATURE) : false;
 		}
 
 		// observation != null type == HAZARD
 		public boolean isHazard() {
+			Observation observation = getObservation();
 			return observation != null ? observation.type.equals(Type.HAZARD) : false;
 		}
 
 		public boolean isTreasure() {
+			Observation observation = getObservation();
 			return observation != null ? observation.type.equals(Type.CREATURE) && observation.classId == 10 : false;
 		}
 
 		public boolean isApple() {
+			Observation observation = getObservation();
 			return observation != null ? observation.type.equals(Type.CREATURE) && observation.classId == 11 : false;
 		}
 
 		public boolean isFlytrap() {
+			Observation observation = getObservation();
 			return observation != null ? observation.type.equals(Type.CREATURE) && observation.classId == 12 : false;
 		}
 
 		// observation != null && type == EMPTY
 		public boolean isEmpty() {
+			Observation observation = getObservation();
 			return observation != null ? observation.type.equals(Type.EMPTY) : false;
 		}
 
 		// observation != null
 		public boolean isUnknown() {
+			Observation observation = getObservation();
 			return observation == null;
 		}
 
 		// returns the symbol determinded by updateObservation(..)
 		public char print() {
 			return symbol.getSymbol();
-		}
-
-		// sets the symbol of this field
-		private void setSymbol(Symbol symbol) {
-			this.symbol = symbol;
 		}
 
 		// returns the position of the observation
@@ -549,7 +656,6 @@ public class SampleRover extends Creature {
 
 		int id;
 		private TraceField[][] fields;
-		// private boolean[][] fields;
 		private Point currentPosition;
 		private Point lastPosition;
 
@@ -642,13 +748,13 @@ public class SampleRover extends Creature {
 
 		void setVisited(boolean visited);
 
-		double getDistance();
+		Double getDistance();
 
-		double setDistance(double distance);
+		void setDistance(Double distance);
 
 		RoutableVertex<E> getPredecessor();
 
-		RoutableVertex<E> setPredecessor(RoutableVertex<E> vertex);
+		void setPredecessor(RoutableVertex<E> vertex);
 
 	}
 
@@ -656,7 +762,7 @@ public class SampleRover extends Creature {
 
 		RoutableVertex<E> addVertex(E element);
 
-		RoutableVertex<E> removeVertex(RoutableVertex<E> vertex);
+		void removeVertex(RoutableVertex<E> vertex);
 
 		Set<RoutableVertex<E>> getVertices();
 
@@ -668,7 +774,7 @@ public class SampleRover extends Creature {
 
 		boolean containsEdge(RoutableVertex<E> firstVertex, RoutableVertex<E> secondVertex, double weight);
 
-		RoutableEdge<E> removeEdge(RoutableEdge<E> edge);
+		void removeEdge(RoutableEdge<E> edge);
 
 		List<RoutableEdge<E>> getEdges(RoutableVertex<E> vertex);
 
@@ -678,9 +784,9 @@ public class SampleRover extends Creature {
 
 	public interface RoutableEdge<E> {
 
-		double getWeight();
+		Double getWeight();
 
-		double setWeight(double weight);
+		void setWeight(Double weight);
 
 		RoutableVertex<E> getFirstVertex();
 
@@ -706,14 +812,14 @@ public class SampleRover extends Creature {
 		}
 
 		@Override
-		public RoutableVertex<E> removeVertex(RoutableVertex<E> vertex) {
+		public void removeVertex(RoutableVertex<E> vertex) {
 			RoutableVertexImpl<E> vertexImpl = validate(vertex);
 			List<RoutableEdgeImpl<E>> edges = vertices.remove(vertexImpl);
 			for (RoutableEdgeImpl<E> edge : edges) {
 				RoutableVertexImpl<E> neighbourVertex = edge.getOtherVertexImpl(vertexImpl);
 				vertices.get(neighbourVertex).remove(edge);
 			}
-			return vertexImpl;
+//			return vertexImpl;
 		}
 
 		@Override
@@ -745,13 +851,13 @@ public class SampleRover extends Creature {
 		}
 
 		@Override
-		public RoutableEdge<E> removeEdge(RoutableEdge<E> edge) {
+		public void removeEdge(RoutableEdge<E> edge) {
 			RoutableEdgeImpl<E> edgeImpl = validate(edge);
-			RoutableVertexImpl<E> firstVertex = edgeImpl.getFirstVertexImpl();
-			RoutableVertexImpl<E> secondVertex = edgeImpl.getSecondVertexImpl();
-			vertices.get(firstVertex).remove(edgeImpl);
-			vertices.get(secondVertex).remove(edgeImpl);
-			return edgeImpl;
+//			RoutableVertexImpl<E> firstVertex = edgeImpl.getFirstVertexImpl();
+//			RoutableVertexImpl<E> secondVertex = edgeImpl.getSecondVertexImpl();
+			vertices.get(edgeImpl.getFirstVertexImpl()).remove(edgeImpl);
+			vertices.get(edgeImpl.getSecondVertexImpl()).remove(edgeImpl);
+//			return edgeImpl;
 		}
 
 		@Override
@@ -804,7 +910,7 @@ public class SampleRover extends Creature {
 
 		private class RoutableEdgeImpl<T> implements RoutableEdge<T> {
 
-			private double weight;
+			private Double weight;
 			private RoutableVertexImpl<T> firstVertex;
 			private RoutableVertexImpl<T> secondVertex;
 
@@ -816,15 +922,15 @@ public class SampleRover extends Creature {
 			}
 
 			@Override
-			public double getWeight() {
+			public Double getWeight() {
 				return weight;
 			}
 
 			@Override
-			public double setWeight(double weight) {
-				double old = this.weight;
+			public void setWeight(Double weight) {
+//				double old = this.weight;
 				this.weight = weight;
-				return old;
+//				return old;
 			}
 
 			private RoutableVertexImpl<T> getOtherVertexImpl(RoutableVertexImpl<T> vertex) {
@@ -884,7 +990,7 @@ public class SampleRover extends Creature {
 		private class RoutableVertexImpl<T> implements RoutableVertex<T> {
 
 			private RoutableVertex<T> predecessor;
-			private double distance;
+			private Double distance;
 			private boolean visited;
 			private T element;
 
@@ -910,15 +1016,15 @@ public class SampleRover extends Creature {
 			}
 
 			@Override
-			public double getDistance() {
+			public Double getDistance() {
 				return distance;
 			}
 
 			@Override
-			public double setDistance(double distance) {
-				double old = this.distance;
+			public void setDistance(Double distance) {
+//				double old = this.distance;
 				this.distance = distance;
-				return old;
+//				return old;
 			}
 
 			@Override
@@ -927,10 +1033,10 @@ public class SampleRover extends Creature {
 			}
 
 			@Override
-			public RoutableVertex<T> setPredecessor(RoutableVertex<T> vertex) {
-				RoutableVertex<T> old = predecessor;
+			public void setPredecessor(RoutableVertex<T> vertex) {
+//				RoutableVertex<T> old = predecessor;
 				predecessor = vertex;
-				return old;
+//				return old;
 			}
 
 			@Override
@@ -985,15 +1091,16 @@ public class SampleRover extends Creature {
 		private RoutableVertex<E> currentPosition;
 		private Predicate<RoutableVertex<E>> escapeCondition;
 		private PriorityQueue<RoutableVertex<E>> uncalculatedPositions;
+		private Double distance;
 
 		public Dijkstra() {
 			uncalculatedPositions = new PriorityQueue<RoutableVertex<E>>(new RoutableVertexComparator());
 		}
 
 		public RoutableVertex<E> calc() {
-			if (!isInitialized()) {
-				throw new IllegalArgumentException("the dijkstra was not fully initialised");
-			}
+//			if (!isInitialized()) {
+//				throw new IllegalArgumentException("the dijkstra was not fully initialised");
+//			}
 			for (RoutableVertex<E> vertex : graph.getVertices()) {
 				vertex.setDistance(Double.MAX_VALUE);
 				vertex.setVisited(false);
@@ -1003,7 +1110,6 @@ public class SampleRover extends Creature {
 			currentPosition = null;
 			uncalculatedPositions.clear();
 			uncalculatedPositions.add(startPosition);
-			double distance;
 			while (!uncalculatedPositions.isEmpty()) {
 				currentPosition = uncalculatedPositions.poll();
 				if (escapeCondition.test(currentPosition)) {
@@ -1011,8 +1117,9 @@ public class SampleRover extends Creature {
 				}
 				currentPosition.setVisited(true);
 				List<RoutableEdge<E>> edges = graph.getEdges(currentPosition);
+				RoutableVertex<E> neighbourVertex = null;
 				for (RoutableEdge<E> edge : edges) {
-					RoutableVertex<E> neighbourVertex = edge.getOtherVertex(currentPosition);
+					neighbourVertex = edge.getOtherVertex(currentPosition);
 					if (!neighbourVertex.isVisited()) {
 						distance = currentPosition.getDistance() + edge.getWeight();
 						if (distance < neighbourVertex.getDistance()) {
@@ -1034,27 +1141,27 @@ public class SampleRover extends Creature {
 			return calc();
 		}
 
-		public Predicate<RoutableVertex<E>> setEscapeCondition(Predicate<RoutableVertex<E>> escapeCondition) {
-			Predicate<RoutableVertex<E>> old = this.escapeCondition;
+		public void setEscapeCondition(Predicate<RoutableVertex<E>> escapeCondition) {
+//			Predicate<RoutableVertex<E>> old = this.escapeCondition;
 			this.escapeCondition = escapeCondition;
-			return old;
+//			return old;
 		}
 
-		public RoutableVertex<E> setStartPosition(RoutableVertex<E> startPosition) {
-			RoutableVertex<E> old = this.startPosition;
+		public void setStartPosition(RoutableVertex<E> startPosition) {
+//			RoutableVertex<E> old = this.startPosition;
 			this.startPosition = startPosition;
-			return old;
+//			return old;
 		}
 
-		public RoutableGraph<E> setGraph(RoutableGraph<E> graph) {
-			RoutableGraph<E> old = this.graph;
+		public void setGraph(RoutableGraph<E> graph) {
+//			RoutableGraph<E> old = this.graph;
 			this.graph = graph;
-			return old;
+//			return old;
 		}
 
-		public boolean isInitialized() {
-			return startPosition != null && graph != null && graph.contains(startPosition) && escapeCondition != null;
-		}
+//		public boolean isInitialized() {
+//			return startPosition != null && graph != null && graph.contains(startPosition) && escapeCondition != null;
+//		}
 
 		private class RoutableVertexComparator implements Comparator<RoutableVertex<E>> {
 
@@ -1066,45 +1173,6 @@ public class SampleRover extends Creature {
 		}
 
 	}
-
-//	public static abstract class EscapeCondition implements Predicate<RoutableVertex<GameField>> {
-//
-//		public static EscapeCondition getNewEqualityCondition(RoutableVertex<GameField> vertex) {
-//			return new EqualityCondition(vertex);
-//		}
-//
-//		public static EscapeCondition getNewIsUnknownCondition() {
-//			return new IsUnknownCondition();
-//		}
-//
-//	}
-
-//	public static class IsUnknownCondition extends EscapeCondition {
-//
-//		@Override
-//		public boolean test(RoutableVertex<GameField> element) {
-//			return element.getElement().isUnknown();
-//		}
-//
-//	}
-//
-//	public static class EqualityCondition extends EscapeCondition {
-//
-//		private RoutableVertex<GameField> vertex;
-//
-//		public EqualityCondition(RoutableVertex<GameField> vertex) {
-//			if (vertex == null) {
-//				throw new NullPointerException("vertex is null");
-//			}
-//			this.vertex = vertex;
-//		}
-//
-//		@Override
-//		public boolean test(RoutableVertex<GameField> element) {
-//			return vertex.equals(element);
-//		}
-//
-//	}
 
 	@FunctionalInterface
 	public static interface Predicate<E> {

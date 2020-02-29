@@ -180,3 +180,6 @@
 /SampleRover$EscapeCondition.class
 /SampleRover$Path.class
 /SampleRover$1.class
+/SampleRover$GameMap$1.class
+/SampleRover$GameMap$UnknownNeighboursPredicate.class
+/SampleRover$GameMap$EqualityPredicate.class
