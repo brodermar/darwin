@@ -45,19 +45,25 @@ public class SampleRover extends Creature {
 			}
 			System.out.println(map.print());
 			uncover();
-			if (trace.isVisited(frontField.getPosition()) || frontField.isNotVisitable()
-					|| frontField.isFriend(getClassId())) {
-				if (!moveToNextUnknown()) {
-					turnToLeastVisitedField();
-					if(!moveForwardAdvanced()) {
-						rotateAround();
-					}
-				}
-			} else {
-				if(!moveForwardAdvanced()) {
+			if (!moveToNextUnknown()) {
+				turnToLeastVisitedField();
+				if (!moveForwardAdvanced()) {
 					rotateAround();
 				}
 			}
+//			if (trace.isVisited(frontField.getPosition()) || frontField.isNotVisitable()
+//					|| frontField.isFriend(getClassId())) {
+//				if (!moveToNextUnknown()) {
+//					turnToLeastVisitedField();
+//					if (!moveForwardAdvanced()) {
+//						rotateAround();
+//					}
+//				}
+//			} else {
+//				if (!moveForwardAdvanced()) {
+//					rotateAround();
+//				}
+//			}
 		}
 	}
 
@@ -109,11 +115,8 @@ public class SampleRover extends Creature {
 				map.updateObservations(observe());
 				if (map.isTreasureKnown()) {
 					moveToField(map.getTreasure());
-					return true;
 				}
-				if (!moveForwardAdvanced()) {
-					return false;
-				}
+				moveForwardAdvanced();
 			}
 			rotateToNextUnknown();
 		}
@@ -246,7 +249,7 @@ public class SampleRover extends Creature {
 		if (frontField.isFriend(getClassId())) {
 			return false;
 		}
-//		boolean returnVal = moveForward();
+		// boolean returnVal = moveForward();
 		if (moveForward()) {
 			updateWithCurrentPosition();
 			return true;
@@ -819,7 +822,7 @@ public class SampleRover extends Creature {
 				RoutableVertexImpl<E> neighbourVertex = edge.getOtherVertexImpl(vertexImpl);
 				vertices.get(neighbourVertex).remove(edge);
 			}
-//			return vertexImpl;
+			// return vertexImpl;
 		}
 
 		@Override
@@ -853,11 +856,11 @@ public class SampleRover extends Creature {
 		@Override
 		public void removeEdge(RoutableEdge<E> edge) {
 			RoutableEdgeImpl<E> edgeImpl = validate(edge);
-//			RoutableVertexImpl<E> firstVertex = edgeImpl.getFirstVertexImpl();
-//			RoutableVertexImpl<E> secondVertex = edgeImpl.getSecondVertexImpl();
+			// RoutableVertexImpl<E> firstVertex = edgeImpl.getFirstVertexImpl();
+			// RoutableVertexImpl<E> secondVertex = edgeImpl.getSecondVertexImpl();
 			vertices.get(edgeImpl.getFirstVertexImpl()).remove(edgeImpl);
 			vertices.get(edgeImpl.getSecondVertexImpl()).remove(edgeImpl);
-//			return edgeImpl;
+			// return edgeImpl;
 		}
 
 		@Override
@@ -928,9 +931,9 @@ public class SampleRover extends Creature {
 
 			@Override
 			public void setWeight(Double weight) {
-//				double old = this.weight;
+				// double old = this.weight;
 				this.weight = weight;
-//				return old;
+				// return old;
 			}
 
 			private RoutableVertexImpl<T> getOtherVertexImpl(RoutableVertexImpl<T> vertex) {
@@ -1022,9 +1025,9 @@ public class SampleRover extends Creature {
 
 			@Override
 			public void setDistance(Double distance) {
-//				double old = this.distance;
+				// double old = this.distance;
 				this.distance = distance;
-//				return old;
+				// return old;
 			}
 
 			@Override
@@ -1034,9 +1037,9 @@ public class SampleRover extends Creature {
 
 			@Override
 			public void setPredecessor(RoutableVertex<T> vertex) {
-//				RoutableVertex<T> old = predecessor;
+				// RoutableVertex<T> old = predecessor;
 				predecessor = vertex;
-//				return old;
+				// return old;
 			}
 
 			@Override
@@ -1098,9 +1101,9 @@ public class SampleRover extends Creature {
 		}
 
 		public RoutableVertex<E> calc() {
-//			if (!isInitialized()) {
-//				throw new IllegalArgumentException("the dijkstra was not fully initialised");
-//			}
+			// if (!isInitialized()) {
+			// throw new IllegalArgumentException("the dijkstra was not fully initialised");
+			// }
 			for (RoutableVertex<E> vertex : graph.getVertices()) {
 				vertex.setDistance(Double.MAX_VALUE);
 				vertex.setVisited(false);
@@ -1142,26 +1145,27 @@ public class SampleRover extends Creature {
 		}
 
 		public void setEscapeCondition(Predicate<RoutableVertex<E>> escapeCondition) {
-//			Predicate<RoutableVertex<E>> old = this.escapeCondition;
+			// Predicate<RoutableVertex<E>> old = this.escapeCondition;
 			this.escapeCondition = escapeCondition;
-//			return old;
+			// return old;
 		}
 
 		public void setStartPosition(RoutableVertex<E> startPosition) {
-//			RoutableVertex<E> old = this.startPosition;
+			// RoutableVertex<E> old = this.startPosition;
 			this.startPosition = startPosition;
-//			return old;
+			// return old;
 		}
 
 		public void setGraph(RoutableGraph<E> graph) {
-//			RoutableGraph<E> old = this.graph;
+			// RoutableGraph<E> old = this.graph;
 			this.graph = graph;
-//			return old;
+			// return old;
 		}
 
-//		public boolean isInitialized() {
-//			return startPosition != null && graph != null && graph.contains(startPosition) && escapeCondition != null;
-//		}
+		// public boolean isInitialized() {
+		// return startPosition != null && graph != null &&
+		// graph.contains(startPosition) && escapeCondition != null;
+		// }
 
 		private class RoutableVertexComparator implements Comparator<RoutableVertex<E>> {
 
