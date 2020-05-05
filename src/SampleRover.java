@@ -25,15 +25,8 @@ public class SampleRover extends Creature {
 
 	// the path get passed to the map by the rover for calculations of the dijkstra
 	private Path<GameField> path;
-
-	// the neighbors of the rover
-	private GameField frontField;
-	private GameField leftField;
-	private GameField rightField;
-	private GameField backField;
-
-	// the trace of the rover
-	private Trace trace;
+	private List<GameField> backTrace;
+	private List<GameField> trace;
 
 	@Override
 	public void run() {
@@ -47,23 +40,13 @@ public class SampleRover extends Creature {
 			uncover();
 			if (!moveToNextUnknown()) {
 				turnToLeastVisitedField();
-				if (!moveForwardAdvanced()) {
+				if (moveForwardAdvanced()) {
+					updateTrace();
+					updateBackTrace();
+				} else {
 					rotateAround();
 				}
 			}
-//			if (trace.isVisited(frontField.getPosition()) || frontField.isNotVisitable()
-//					|| frontField.isFriend(getClassId())) {
-//				if (!moveToNextUnknown()) {
-//					turnToLeastVisitedField();
-//					if (!moveForwardAdvanced()) {
-//						rotateAround();
-//					}
-//				}
-//			} else {
-//				if (!moveForwardAdvanced()) {
-//					rotateAround();
-//				}
-//			}
 		}
 	}
 
@@ -97,7 +80,10 @@ public class SampleRover extends Creature {
 			if (map.isTreasureKnown() && !target.equals(map.getTreasure())) {
 				return;
 			}
-			if (!moveForwardAdvanced()) {
+			if (moveForwardAdvanced()) {
+				updateTrace();
+				updateBackTrace();
+			} else {
 				return;
 			}
 		}
@@ -117,69 +103,73 @@ public class SampleRover extends Creature {
 					moveToField(map.getTreasure());
 				}
 				moveForwardAdvanced();
+				updateTrace();
+				updateBackTrace();
 			}
 			rotateToNextUnknown();
 		}
 		return true;
 	}
 
+	//TODO use this method
+	private boolean moveBack() {
+		rotate(backTrace.get(backTrace.size() - 2));
+		if (moveForwardAdvanced()) {
+			updateTrace();
+			backTrace.remove(backTrace.size() - 1);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	private boolean turnToLeastVisitedField() {
 		GameField selected = null;
-		if (frontField != null) {
-			if (selected == null || (frontField.isVisitable() && !frontField.isFriend(getClassId())
-					&& trace.getVisitedTimes(frontField) < trace.getVisitedTimes(selected))) {
-				selected = frontField;
-			}
-		}
-		if (leftField != null) {
-			if (selected == null || (leftField.isVisitable() && !frontField.isFriend(getClassId())
-					&& trace.getVisitedTimes(leftField) < trace.getVisitedTimes(selected))) {
-				selected = leftField;
-			}
-		}
-		if (rightField != null) {
-			if (selected == null || (rightField.isVisitable() && !frontField.isFriend(getClassId())
-					&& trace.getVisitedTimes(rightField) < trace.getVisitedTimes(selected))) {
-				selected = rightField;
-			}
-		}
-		if (backField != null) {
-			if (selected == null || (backField.isVisitable() && !frontField.isFriend(getClassId())
-					&& trace.getVisitedTimes(backField) < trace.getVisitedTimes(selected))) {
-				selected = backField;
+		for (Direction direction : Direction.values()) {
+			GameField field = neighbour(direction);
+			if (field != null && (selected == null || (field.isVisitable() && !field.isFriend(getClassId())
+					&& field.getVisits(getId()) < selected.getVisits(getId())))) {
+				selected = field;
 			}
 		}
 		return rotate(selected);
 	}
 
 	public boolean rotateToNextUnknown() {
-		if (leftField.isUnknown()) {
+		if (isDirectionUnknown(leftField(), getDirection().left())) {
 			rotateLeft();
 			return true;
-		} else if (rightField.isUnknown()) {
+		} else if (isDirectionUnknown(rightField(), getDirection().right())) {
 			rotateRight();
 			return true;
-		} else if (backField.isUnknown()) {
+		} else if (isDirectionUnknown(backField(), getDirection().opposite())) {
 			rotateAround();
 			return true;
 		}
 		return false;
 	}
 
+	public boolean isDirectionUnknown(GameField field, Direction direction) {
+		if (field.isUnknown()) {
+			return true;
+		} else if (field.isVisitable()) {
+			return isDirectionUnknown(map.neighbour(field, direction), direction);
+		} else {
+			return false;
+		}
+	}
+
 	public void rotateLeft() {
 		turnLeft();
-		determineNeighbours();
 	}
 
 	public void rotateRight() {
 		turnRight();
-		determineNeighbours();
 	}
 
 	public void rotateAround() {
 		turnLeft();
 		turnLeft();
-		determineNeighbours();
 	}
 
 	// returns the game field of the map of the current position
@@ -189,7 +179,7 @@ public class SampleRover extends Creature {
 
 	// returns the game field of the map of the last position
 	public GameField getLastField() {
-		return trace.getLastPosition() != null ? map.getField(trace.getLastPosition()) : null;
+		return trace.get(trace.size() - 2);
 	}
 
 	// returns the neighbour GameField of the given direction and the current
@@ -217,8 +207,8 @@ public class SampleRover extends Creature {
 	}
 
 	public boolean isNeighbour(GameField field) {
-		return field.equals(frontField) || field.equals(leftField) || field.equals(backField)
-				|| field.equals(rightField);
+		return field.equals(frontField()) || field.equals(leftField()) || field.equals(backField())
+				|| field.equals(rightField());
 	}
 
 	// returns the GameField in the front of the rover
@@ -242,6 +232,7 @@ public class SampleRover extends Creature {
 	}
 
 	boolean moveForwardAdvanced() {
+		GameField frontField = frontField();
 		if (frontField.isEnemy(getClassId())) {
 			attack();
 			return false;
@@ -250,17 +241,18 @@ public class SampleRover extends Creature {
 			return false;
 		}
 		// boolean returnVal = moveForward();
-		if (moveForward()) {
-			updateWithCurrentPosition();
-			return true;
-		}
-		return false;
+		return moveForward();
 	}
 
-	private void updateWithCurrentPosition() {
-		trace.addVisit(getPosition());
-		determineNeighbours();
-		map.updateObservation(new Observation(trace.getLastPosition(), getGameTime()));
+	private void updateTrace() {
+		GameField curField = getCurrentField();
+		curField.addVisit(getId());
+		trace.add(curField);
+		map.updateObservation(new Observation(getLastField().getPosition(), getGameTime()));
+	}
+
+	private void updateBackTrace() {
+		backTrace.add(getCurrentField());
 	}
 
 	// initializes a new map if necessary, creates a new trace for this creature and
@@ -269,17 +261,12 @@ public class SampleRover extends Creature {
 		if (map == null) {
 			map = new GameMap(getMapDimensions());
 		}
-		trace = new Trace(getMapDimensions(), getId());
 		path = new Path<GameField>();
-		trace.addVisit(getPosition());
-		determineNeighbours();
-	}
-
-	private void determineNeighbours() {
-		frontField = frontField();
-		leftField = leftField();
-		rightField = rightField();
-		backField = backField();
+		backTrace = new ArrayList<>();
+		trace = new ArrayList<>();
+		GameField curField = getCurrentField();
+		backTrace.add(curField);
+		trace.add(curField);
 	}
 
 	public static class GameMap {
@@ -293,7 +280,7 @@ public class SampleRover extends Creature {
 		private int width;
 		private GameField[][] fields;
 		private GameField treasure;
-		private Map<Point, RoutableVertex<GameField>> vertices;
+		private Map<GameField, RoutableVertex<GameField>> vertices;
 
 		// constructs a new game map: initializes the game fields
 		public GameMap(Dimension dimension) {
@@ -302,17 +289,10 @@ public class SampleRover extends Creature {
 			fields = new GameField[width][height];
 			vertices = new HashMap<>();
 			graph = new RoutableGraphImpl<GameField>();
-			for (int i = 0; i < width; i++) {
-				for (int j = 0; j < height; j++) {
-					Point position = new Point(i, j);
-					fields[i][j] = new GameField(position);
-					vertices.put(position, graph.addVertex(fields[i][j]));
-				}
-			}
 			dijkstra = new Dijkstra<>();
 			dijkstra.setGraph(graph);
 			hasUnknownNeighboursPredicate = new UnknownNeighboursPredicate();
-			equalityPredicate = new EqualityPredicate(vertices.get(fields[0][0].getPosition()));
+			equalityPredicate = new EqualityPredicate(getVertex(getField(0, 0)));
 		}
 
 		public Path<GameField> calcPathToTarget(Path<GameField> path, GameField startPosition,
@@ -332,11 +312,16 @@ public class SampleRover extends Creature {
 		}
 
 		public RoutableVertex<GameField> getVertex(GameField field) {
-			return getVertex(field.getPosition());
+			RoutableVertex<GameField> vertex = vertices.get(field);
+			if (vertex == null) {
+				vertex = graph.addVertex(field);
+				vertices.put(field, vertex);
+			}
+			return vertex;
 		}
 
 		public RoutableVertex<GameField> getVertex(Point position) {
-			return vertices.get(position);
+			return getVertex(getField(position));
 		}
 
 		public boolean isTreasureKnown() {
@@ -379,8 +364,8 @@ public class SampleRover extends Creature {
 		}
 
 		private void addEdge(GameField field1, GameField field2, double weight) {
-			RoutableVertex<GameField> first = vertices.get(field1.getPosition());
-			RoutableVertex<GameField> second = vertices.get(field2.getPosition());
+			RoutableVertex<GameField> first = getVertex(field1);
+			RoutableVertex<GameField> second = getVertex(field2);
 			if (!graph.containsEdge(first, second, weight)) {
 				graph.addEdge(first, second, weight);
 			}
@@ -398,13 +383,22 @@ public class SampleRover extends Creature {
 		}
 
 		public GameField getField(Point position) {
-			return fields[position.x][position.y];
+			return getField(position.x, position.y);
+		}
+
+		public GameField getField(int x, int y) {
+			GameField gameField = fields[x][y];
+			if (gameField == null) {
+				gameField = new GameField(new Point(x, y));
+				fields[x][y] = gameField;
+			}
+			return gameField;
 		}
 
 		// returns the field above the given position or null: decrements the
 		// x-coordinate if possible
 		public GameField north(Point position) {
-			return position.y > 0 ? fields[position.x][position.y - 1] : null;
+			return position.y > 0 ? getField(position.x, position.y - 1) : null;
 		}
 
 		public GameField north(GameField field) {
@@ -419,7 +413,7 @@ public class SampleRover extends Creature {
 		// returns the field under the given position or null: increments the
 		// x-coordinate if possible
 		public GameField south(Point position) {
-			return position.y < height - 1 ? fields[position.x][position.y + 1] : null;
+			return position.y < height - 1 ? getField(position.x, position.y + 1) : null;
 		}
 
 		public GameField south(GameField field) {
@@ -434,7 +428,7 @@ public class SampleRover extends Creature {
 		// returns the field on the left side of the given position or null: decrements
 		// the y-coordinate if possible
 		public GameField west(Point position) {
-			return position.x > 0 ? fields[position.x - 1][position.y] : null;
+			return position.x > 0 ? getField(position.x - 1, position.y) : null;
 		}
 
 		public GameField west(GameField field) {
@@ -449,7 +443,7 @@ public class SampleRover extends Creature {
 		// return the field right to the given position or null: increments the
 		// y-coordinate if possible
 		public GameField east(Point position) {
-			return position.x < width - 1 ? fields[position.x + 1][position.y] : null;
+			return position.x < width - 1 ? getField(position.x + 1, position.y) : null;
 		}
 
 		public GameField east(GameField field) {
@@ -474,7 +468,7 @@ public class SampleRover extends Creature {
 			StringBuilder builder = new StringBuilder();
 			for (int i = 0; i < height; i++) {
 				for (int j = 0; j < width; j++) {
-					builder.append(fields[j][i].print());
+					builder.append(getField(j, i).print());
 				}
 				builder.append("  " + i);
 				builder.append('\n');
@@ -522,6 +516,7 @@ public class SampleRover extends Creature {
 
 	public static class GameField {
 
+		private Map<Integer, Integer> visits;
 		private Observation observation;
 		private Point position;
 		private Symbol symbol;
@@ -530,6 +525,7 @@ public class SampleRover extends Creature {
 		public GameField(Point position) {
 			this.position = position;
 			symbol = Symbol.UNKOWN;
+			visits = new HashMap<>();
 		}
 
 		// sets the observation of the field and updates the field symbol depending on
@@ -638,6 +634,19 @@ public class SampleRover extends Creature {
 			return position;
 		}
 
+		public int getVisits(Integer id) {
+			return visits.getOrDefault(id, 0);
+		}
+
+		public boolean isVisited(Integer id) {
+			return getVisits(id) > 0;
+		}
+
+		public void addVisit(Integer id) {
+			Integer count = visits.getOrDefault(id, 0);
+			visits.putIfAbsent(id, ++count);
+		}
+
 	}
 
 	public static enum Symbol {
@@ -653,94 +662,6 @@ public class SampleRover extends Creature {
 		public char getSymbol() {
 			return symbol;
 		}
-	}
-
-	public static class Trace {
-
-		int id;
-		private TraceField[][] fields;
-		private Point currentPosition;
-		private Point lastPosition;
-
-		// constructs and initalizes a new trace for a creature id
-		public Trace(Dimension dimension, int id) {
-			this.id = id;
-			int height = (int) dimension.getHeight();
-			int width = (int) dimension.getWidth();
-			fields = new TraceField[width][height];
-			for (int i = 0; i < width; i++) {
-				for (int j = 0; j < height; j++) {
-					fields[i][j] = new TraceField();
-				}
-			}
-		}
-
-		public int getVisitedTimes(GameField field) {
-			return getVisitedTimes(field.getPosition());
-		}
-
-		public int getVisitedTimes(Point position) {
-			return fields[position.x][position.y].getVisitedTimes();
-		}
-
-		public boolean isVisited(GameField field) {
-			return isVisited(field.getPosition());
-		}
-
-		// returns the value of the field of the given position
-		public boolean isVisited(Point position) {
-			return fields[position.x][position.y].isVisited();
-		}
-
-		// sets the field of the given position to true, updates the current position to
-		// the given one and sets the old position to the field "lastPosition"
-		public void addVisit(Point position) {
-			fields[position.x][position.y].setVisited();
-			lastPosition = currentPosition;
-			currentPosition = position;
-		}
-
-		public void addVisit(GameField field) {
-			addVisit(field.getPosition());
-		}
-
-		// returns the current position, this means the last position added by
-		// "setCurrentPosition()"
-		public Point getCurrentPosition() {
-			return currentPosition;
-		}
-
-		// returns the last position, this means the last before position before the
-		// last position added by "setCurrentPosition()"
-		public Point getLastPosition() {
-			return lastPosition;
-		}
-
-	}
-
-	public static class TraceField {
-
-		private boolean visited;
-		private int visitedTimes;
-
-		public TraceField() {
-			visited = false;
-			visitedTimes = 0;
-		}
-
-		void setVisited() {
-			this.visited = true;
-			visitedTimes++;
-		}
-
-		boolean isVisited() {
-			return visited;
-		}
-
-		int getVisitedTimes() {
-			return visitedTimes;
-		}
-
 	}
 
 	public interface RoutableVertex<E> {
@@ -931,9 +852,7 @@ public class SampleRover extends Creature {
 
 			@Override
 			public void setWeight(Double weight) {
-				// double old = this.weight;
 				this.weight = weight;
-				// return old;
 			}
 
 			private RoutableVertexImpl<T> getOtherVertexImpl(RoutableVertexImpl<T> vertex) {
@@ -1025,9 +944,7 @@ public class SampleRover extends Creature {
 
 			@Override
 			public void setDistance(Double distance) {
-				// double old = this.distance;
 				this.distance = distance;
-				// return old;
 			}
 
 			@Override
@@ -1037,9 +954,7 @@ public class SampleRover extends Creature {
 
 			@Override
 			public void setPredecessor(RoutableVertex<T> vertex) {
-				// RoutableVertex<T> old = predecessor;
 				predecessor = vertex;
-				// return old;
 			}
 
 			@Override
@@ -1101,9 +1016,6 @@ public class SampleRover extends Creature {
 		}
 
 		public RoutableVertex<E> calc() {
-			// if (!isInitialized()) {
-			// throw new IllegalArgumentException("the dijkstra was not fully initialised");
-			// }
 			for (RoutableVertex<E> vertex : graph.getVertices()) {
 				vertex.setDistance(Double.MAX_VALUE);
 				vertex.setVisited(false);
@@ -1145,27 +1057,16 @@ public class SampleRover extends Creature {
 		}
 
 		public void setEscapeCondition(Predicate<RoutableVertex<E>> escapeCondition) {
-			// Predicate<RoutableVertex<E>> old = this.escapeCondition;
 			this.escapeCondition = escapeCondition;
-			// return old;
 		}
 
 		public void setStartPosition(RoutableVertex<E> startPosition) {
-			// RoutableVertex<E> old = this.startPosition;
 			this.startPosition = startPosition;
-			// return old;
 		}
 
 		public void setGraph(RoutableGraph<E> graph) {
-			// RoutableGraph<E> old = this.graph;
 			this.graph = graph;
-			// return old;
 		}
-
-		// public boolean isInitialized() {
-		// return startPosition != null && graph != null &&
-		// graph.contains(startPosition) && escapeCondition != null;
-		// }
 
 		private class RoutableVertexComparator implements Comparator<RoutableVertex<E>> {
 
