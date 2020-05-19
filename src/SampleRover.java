@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.Stack;
+
+import javax.crypto.spec.PSource;
 
 /**
  * A sample rover to explore the features of the simulation.
@@ -37,34 +40,29 @@ public class SampleRover extends Creature {
 				moveToField(map.getTreasure());
 			}
 			System.out.println(map.print());
-			uncover();
-			if (!moveToNextUnknown()) {
-				turnToLeastVisitedField();
-				if (moveForwardAdvanced()) {
-					updateTrace();
-					updateBackTrace();
-				} else {
-					rotateAround();
+			if (!uncover()) {
+				if (!moveToNextUnknown()) {
+					turnToLeastVisitedField();
+					if (moveForwardAdvanced()) {
+						updateTrace();
+						updateBackTrace();
+					} else {
+						rotateAround();
+					}
 				}
 			}
 		}
 	}
 
-	public Direction uncover() {
-		Direction direction = getDirection();
-		if (!rotateToNextUnknown()) {
-			return direction;
-		}
-		while (true) {
+	public boolean uncover() {
+		if (rotateToNextUnknown()) {
 			map.updateObservations(observe());
 			if (map.isTreasureKnown()) {
 				moveToField(map.getTreasure());
-				return direction;
 			}
-			if (!rotateToNextUnknown()) {
-				return direction;
-			}
+			return true;
 		}
+		return false;
 	}
 
 	private void moveToField(GameField target) {
@@ -74,8 +72,7 @@ public class SampleRover extends Creature {
 			return;
 		}
 		for (int i = 1; i < elements.size(); i++) {
-			GameField curField = elements.get(i);
-			rotate(curField);
+			rotate(elements.get(i));
 			map.updateObservations(observe());
 			if (map.isTreasureKnown() && !target.equals(map.getTreasure())) {
 				return;
@@ -91,7 +88,11 @@ public class SampleRover extends Creature {
 
 	private boolean moveToNextUnknown() {
 		if (!rotateToNextUnknown()) {
-			map.calcPathToNextUnknown(path, map.getField(getPosition()));
+			GameField start = map.getField(getPosition());
+			map.calcPathToNextUnknown(path, start);
+			if (path.elements.isEmpty()) {
+				map.searchNextUnknown(path, start);
+			}
 			List<GameField> elements = path.getElements();
 			if (elements.size() < 2) {
 				return false;
@@ -102,17 +103,22 @@ public class SampleRover extends Creature {
 				if (map.isTreasureKnown()) {
 					moveToField(map.getTreasure());
 				}
-				moveForwardAdvanced();
-				updateTrace();
-				updateBackTrace();
+				if (moveForwardAdvanced()) {
+					updateTrace();
+					updateBackTrace();
+				} else {
+					return true;
+				}
 			}
 			rotateToNextUnknown();
 		}
 		return true;
 	}
 
-	//TODO use this method
 	private boolean moveBack() {
+		if (backTrace.size() <= 1) {
+			return false;
+		}
 		rotate(backTrace.get(backTrace.size() - 2));
 		if (moveForwardAdvanced()) {
 			updateTrace();
@@ -271,11 +277,13 @@ public class SampleRover extends Creature {
 
 	public static class GameMap {
 
+		public final Long timeout;
 		public final UnknownNeighboursPredicate hasUnknownNeighboursPredicate;
 		public final EqualityPredicate equalityPredicate;
 
 		private RoutableGraph<GameField> graph;
 		private Dijkstra<GameField> dijkstra;
+		private DFS<GameField> dfs;
 		private int height;
 		private int width;
 		private GameField[][] fields;
@@ -291,8 +299,12 @@ public class SampleRover extends Creature {
 			graph = new RoutableGraphImpl<GameField>();
 			dijkstra = new Dijkstra<>();
 			dijkstra.setGraph(graph);
+			dfs = new DFS<SampleRover.GameField>();
+			dfs.setGraph(graph);
 			hasUnknownNeighboursPredicate = new UnknownNeighboursPredicate();
 			equalityPredicate = new EqualityPredicate(getVertex(getField(0, 0)));
+			timeout = 50L;
+			dijkstra.setTimeOut(timeout);
 		}
 
 		public Path<GameField> calcPathToTarget(Path<GameField> path, GameField startPosition,
@@ -308,6 +320,13 @@ public class SampleRover extends Creature {
 			dijkstra.setEscapeCondition(hasUnknownNeighboursPredicate);
 			dijkstra.setStartPosition(getVertex(startPosition));
 			path.load(dijkstra.calc());
+			return path;
+		}
+
+		public Path<GameField> searchNextUnknown(Path<GameField> path, GameField startPosition) {
+			dfs.setEscapeCondition(hasUnknownNeighboursPredicate);
+			dfs.setStartPosition(getVertex(startPosition));
+			path.load(dfs.search());
 			return path;
 		}
 
@@ -743,7 +762,6 @@ public class SampleRover extends Creature {
 				RoutableVertexImpl<E> neighbourVertex = edge.getOtherVertexImpl(vertexImpl);
 				vertices.get(neighbourVertex).remove(edge);
 			}
-			// return vertexImpl;
 		}
 
 		@Override
@@ -777,11 +795,8 @@ public class SampleRover extends Creature {
 		@Override
 		public void removeEdge(RoutableEdge<E> edge) {
 			RoutableEdgeImpl<E> edgeImpl = validate(edge);
-			// RoutableVertexImpl<E> firstVertex = edgeImpl.getFirstVertexImpl();
-			// RoutableVertexImpl<E> secondVertex = edgeImpl.getSecondVertexImpl();
 			vertices.get(edgeImpl.getFirstVertexImpl()).remove(edgeImpl);
 			vertices.get(edgeImpl.getSecondVertexImpl()).remove(edgeImpl);
-			// return edgeImpl;
 		}
 
 		@Override
@@ -992,12 +1007,73 @@ public class SampleRover extends Creature {
 
 		public void load(RoutableVertex<E> vertex) {
 			elements.clear();
+			if (vertex == null) {
+				return;
+			}
 			elements.add(vertex.getElement());
 			RoutableVertex<E> current = vertex.getPredecessor();
 			while (current != null) {
 				elements.add(0, current.getElement());
 				current = current.getPredecessor();
 			}
+		}
+
+	}
+
+	public static class DFS<E> {
+
+		private RoutableGraph<E> graph;
+		private RoutableVertex<E> startPosition;
+		private Predicate<RoutableVertex<E>> escapeCondition;
+		private Stack<RoutableVertex<E>> positions;
+
+		public DFS() {
+			positions = new Stack<SampleRover.RoutableVertex<E>>();
+		}
+
+		public RoutableVertex<E> search() {
+			positions.clear();
+			for (RoutableVertex<E> vertex : graph.getVertices()) {
+				vertex.setVisited(false);
+				vertex.setPredecessor(null);
+			}
+			positions.push(startPosition);
+			startPosition.setVisited(true);
+			while (!positions.empty()) {
+				RoutableVertex<E> position = positions.pop();
+				for (RoutableEdge<E> edge : graph.getEdges(position)) {
+					RoutableVertex<E> neighbour = edge.getOtherVertex(position);
+					if (!neighbour.isVisited()) {
+						neighbour.setPredecessor(position);
+						if (escapeCondition.test(neighbour)) {
+							return neighbour;
+						}
+						neighbour.setVisited(true);
+						positions.push(neighbour);
+					}
+				}
+			}
+			return null;
+		}
+
+		public RoutableVertex<E> search(RoutableGraph<E> graph, RoutableVertex<E> startPosition,
+				Predicate<RoutableVertex<E>> escapeCondition) {
+			this.graph = graph;
+			this.startPosition = startPosition;
+			this.escapeCondition = escapeCondition;
+			return search();
+		}
+
+		public void setEscapeCondition(Predicate<RoutableVertex<E>> escapeCondition) {
+			this.escapeCondition = escapeCondition;
+		}
+
+		public void setStartPosition(RoutableVertex<E> startPosition) {
+			this.startPosition = startPosition;
+		}
+
+		public void setGraph(RoutableGraph<E> graph) {
+			this.graph = graph;
 		}
 
 	}
@@ -1010,12 +1086,15 @@ public class SampleRover extends Creature {
 		private Predicate<RoutableVertex<E>> escapeCondition;
 		private PriorityQueue<RoutableVertex<E>> uncalculatedPositions;
 		private Double distance;
+		private Long timeout;
 
 		public Dijkstra() {
 			uncalculatedPositions = new PriorityQueue<RoutableVertex<E>>(new RoutableVertexComparator());
+			timeout = Long.MAX_VALUE;
 		}
 
 		public RoutableVertex<E> calc() {
+			long startTime = System.currentTimeMillis();
 			for (RoutableVertex<E> vertex : graph.getVertices()) {
 				vertex.setDistance(Double.MAX_VALUE);
 				vertex.setVisited(false);
@@ -1030,10 +1109,12 @@ public class SampleRover extends Creature {
 				if (escapeCondition.test(currentPosition)) {
 					return currentPosition;
 				}
+				if ((System.currentTimeMillis() - startTime) > timeout) {
+					return null;
+				}
 				currentPosition.setVisited(true);
-				List<RoutableEdge<E>> edges = graph.getEdges(currentPosition);
 				RoutableVertex<E> neighbourVertex = null;
-				for (RoutableEdge<E> edge : edges) {
+				for (RoutableEdge<E> edge : graph.getEdges(currentPosition)) {
 					neighbourVertex = edge.getOtherVertex(currentPosition);
 					if (!neighbourVertex.isVisited()) {
 						distance = currentPosition.getDistance() + edge.getWeight();
@@ -1045,7 +1126,11 @@ public class SampleRover extends Creature {
 					}
 				}
 			}
-			return currentPosition;
+			if (currentPosition != startPosition) {
+				return currentPosition;
+			} else {
+				return null;
+			}
 		}
 
 		public RoutableVertex<E> calc(RoutableGraph<E> graph, RoutableVertex<E> startPosition,
@@ -1066,6 +1151,10 @@ public class SampleRover extends Creature {
 
 		public void setGraph(RoutableGraph<E> graph) {
 			this.graph = graph;
+		}
+
+		public void setTimeOut(Long millis) {
+			this.timeout = millis;
 		}
 
 		private class RoutableVertexComparator implements Comparator<RoutableVertex<E>> {
